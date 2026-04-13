@@ -1,4 +1,4 @@
-const { translateText } = require('../services/openai.service');
+const { getTranslationService } = require('../services/ai.factory');
 const { TRANSLATION_MODES, PARAPHRASE_DEGREES } = require('../utils/constants');
 
 /**
@@ -9,7 +9,9 @@ async function translate(req, res, next) {
   try {
     const { text, mode, degree } = req.body;
 
-    const { translatedText, usage } = await translateText(text, mode, degree);
+    // Resolved at request-time — AI_PROVIDER can be changed without restart
+    const { translateText } = getTranslationService();
+    const { translatedText, usage, model } = await translateText(text, mode, degree);
 
     return res.status(200).json({
       success: true,
@@ -20,6 +22,8 @@ async function translate(req, res, next) {
         degree,
       },
       meta: {
+        provider: process.env.AI_PROVIDER || 'openai',
+        model: model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
         usage,
         timestamp: new Date().toISOString(),
       },
