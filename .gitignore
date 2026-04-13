@@ -12,6 +12,11 @@ frontend/.env
 logs
 *.log
 
+# package lock files
+package-lock.json
+backend/package-lock.json
+frontend/package-lock.json
+
 # build outputs
 dist/
 build/

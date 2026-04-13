@@ -38,7 +38,7 @@ app.use('/api/', limiter);
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Corporate Translator API is running.',
+    message: 'Corpo Lingo API is running.',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
   });
