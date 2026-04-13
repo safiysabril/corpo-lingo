@@ -1,20 +1,37 @@
 {
-  "name": "backend",
+  "name": "corpo-lingo",
   "version": "1.0.0",
-  "description": "A backend service for Corpo Lingo",
-  "license": "ISC",
-  "author": "Safiy",
-  "type": "commonjs",
-  "main": "index.js",
+  "description": "Backend API for translating casual text into corporate language.",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --runInBand --forceExit",
+    "test:watch": "jest --watch"
   },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  },
+  "keywords": [],
+  "author": "Zana",
+  "coauthor": "Safiy",
+  "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "express-validator": "^7.3.2",
+    "groq-sdk": "^1.1.2",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
-  },
-  "$schema": "https://json.schemastore.org/package.json"
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
 }
