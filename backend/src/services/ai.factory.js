@@ -18,9 +18,12 @@ function getTranslationService() {
     case 'openai':
       return require('./openai.service');
 
+    case 'ollama':
+      return require('./ollama.service');
+
     default:
       throw new Error(
-        `Unknown AI_PROVIDER "${provider}". Valid options: openai, groq`
+        `Unknown AI_PROVIDER "${provider}". Valid options: openai, groq, ollama`
       );
   }
 }

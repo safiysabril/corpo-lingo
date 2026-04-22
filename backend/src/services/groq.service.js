@@ -36,20 +36,20 @@ const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
  *
  * @param {string} text    - The input text to translate.
  * @param {string} mode    - 'email' | 'documentation' | 'formal'
- * @param {string} degree  - 'few' | 'moderate' | 'high'
+ * @param {string} formality  - 'low' | 'medium' | 'high'
  * @returns {Promise<{ translatedText: string, usage: object, model: string }>}
  */
-async function translateText(text, mode, degree) {
+async function translateText(text, mode, formality) {
   const client = getClient();
   const model = process.env.GROQ_MODEL || DEFAULT_MODEL;
 
   const completion = await client.chat.completions.create({
     model,
     messages: [
-      { role: 'system', content: buildSystemPrompt(mode, degree) },
+      { role: 'system', content: buildSystemPrompt(mode, formality) },
       { role: 'user',   content: buildUserMessage(text) },
     ],
-    temperature: getTemperature(degree),
+    temperature: getTemperature(formality),
     max_tokens: 1024,
   });
 
@@ -70,9 +70,9 @@ async function translateText(text, mode, degree) {
  * Maps paraphrase degree → temperature.
  * Higher degree = more creative / buzzword-heavy output.
  */
-function getTemperature(degree) {
-  const map = { few: 0.3, moderate: 0.6, high: 0.85 };
-  return map[degree] ?? 0.6;
+function getTemperature(formality) {
+  const map = { low: 0.2, medium: 0.3, high: 0.4 };
+  return map[formality] ?? 0.3;
 }
 
 module.exports = { translateText };

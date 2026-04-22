@@ -1,5 +1,5 @@
 const { getTranslationService } = require('../services/ai.factory');
-const { TRANSLATION_MODES, PARAPHRASE_DEGREES } = require('../utils/constants');
+const { TRANSLATION_MODES, FORMALITY_LEVELS } = require('../utils/constants');
 
 /**
  * POST /api/v1/translate
@@ -7,11 +7,11 @@ const { TRANSLATION_MODES, PARAPHRASE_DEGREES } = require('../utils/constants');
  */
 async function translate(req, res, next) {
   try {
-    const { text, mode, degree } = req.body;
+    const { text, mode, formality } = req.body;
 
     // Resolved at request-time — AI_PROVIDER can be changed without restart
     const { translateText } = getTranslationService();
-    const { translatedText, usage, model } = await translateText(text, mode, degree);
+    const { translatedText, usage, model, ollama_response, ollama_request } = await translateText(text, mode, formality);
 
     return res.status(200).json({
       success: true,
@@ -19,7 +19,9 @@ async function translate(req, res, next) {
         original: text,
         translated: translatedText,
         mode,
-        degree,
+        formality,
+        llm_request: ollama_request, // for debugging, can be removed in production
+        llm_response: ollama_response, // for debugging, can be removed in production
       },
       meta: {
         provider: process.env.AI_PROVIDER || 'openai',
@@ -42,7 +44,7 @@ function getOptions(req, res) {
     success: true,
     data: {
       modes: Object.values(TRANSLATION_MODES),
-      degrees: Object.values(PARAPHRASE_DEGREES),
+      formality: Object.values(FORMALITY_LEVELS),
     },
   });
 }

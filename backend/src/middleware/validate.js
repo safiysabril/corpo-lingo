@@ -1,5 +1,5 @@
 const { body, validationResult } = require('express-validator');
-const { TRANSLATION_MODES, PARAPHRASE_DEGREES } = require('../utils/constants');
+const { TRANSLATION_MODES, FORMALITY_LEVELS } = require('../utils/constants');
 
 const validateTranslation = [
   body('text')
@@ -14,11 +14,11 @@ const validateTranslation = [
     .isIn(Object.values(TRANSLATION_MODES))
     .withMessage(`mode must be one of: ${Object.values(TRANSLATION_MODES).join(', ')}.`),
 
-  body('degree')
+  body('formality')
     .trim()
-    .notEmpty().withMessage('degree is required.')
-    .isIn(Object.values(PARAPHRASE_DEGREES))
-    .withMessage(`degree must be one of: ${Object.values(PARAPHRASE_DEGREES).join(', ')}.`),
+    .notEmpty().withMessage('formality is required.')
+    .isIn(Object.values(FORMALITY_LEVELS))
+    .withMessage(`formality must be one of: ${Object.values(FORMALITY_LEVELS).join(', ')}.`),
 
   (req, res, next) => {
     const errors = validationResult(req);

@@ -1,7 +1,7 @@
 const BASE_URL = 'http://localhost:3000/api/v1';
 
-export async function translateText({ text, mode, degree }) {
-  const payload = { text, mode, degree };
+export async function translateText({ text, mode, formality }) {
+  const payload = { text, mode, formality };
 
   console.log('API Request Body:', payload);
 
