@@ -1,0 +1,13 @@
+{
+  "name": "corpo-lingo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint"
+  },
+  "devDependencies": {
+    "nx": "22.6.5"
+  }
+}

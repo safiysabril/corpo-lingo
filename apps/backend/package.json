@@ -1,5 +1,5 @@
 {
-  "name": "corpo-lingo",
+  "name": "@corpo-lingo/backend",
   "version": "1.0.0",
   "description": "Backend API for translating casual text into corporate language.",
   "main": "src/server.js",
