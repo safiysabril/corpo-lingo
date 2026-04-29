@@ -1,7 +1,8 @@
-const { body, validationResult } = require('express-validator');
-const { TRANSLATION_MODES, FORMALITY_LEVELS } = require('../utils/constants');
+import { body, validationResult } from 'express-validator';
+import { TRANSLATION_MODES, FORMALITY_LEVELS } from '../utils/constants';
+import type { Request, Response, NextFunction } from 'express';
 
-const validateTranslation = [
+export const validateTranslation = [
   body('text')
     .trim()
     .notEmpty().withMessage('text is required.')
@@ -20,17 +21,16 @@ const validateTranslation = [
     .isIn(Object.values(FORMALITY_LEVELS))
     .withMessage(`formality must be one of: ${Object.values(FORMALITY_LEVELS).join(', ')}.`),
 
-  (req, res, next) => {
+  (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: 'Validation failed.',
-        details: errors.array().map((e) => ({ field: e.path, message: e.msg })),
+        details: errors.array().map((e: any) => ({ field: e.path, message: e.msg })),
       });
+      return;
     }
     next();
   },
 ];
-
-module.exports = { validateTranslation };

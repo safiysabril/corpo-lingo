@@ -1,8 +1,8 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+import { translate, getOptions } from '../controllers/translate.controller';
+import { validateTranslation } from '../middleware/validate';
 
-const { translate, getOptions } = require('../controllers/translate.controller');
-const { validateTranslation } = require('../middleware/validate');
+const router: Router = Router();
 
 /**
  * GET /api/v1/translate/options
@@ -23,4 +23,4 @@ router.get('/options', getOptions);
  */
 router.post('/', validateTranslation, translate);
 
-module.exports = router;
+export default router;

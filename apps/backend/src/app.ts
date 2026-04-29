@@ -1,12 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 
-const translateRoutes = require('./routes/translate.routes');
-const errorHandler = require('./middleware/errorHandler');
-const { notFound } = require('./middleware/notFound');
+import translateRoutes from './routes/translate.routes';
+import errorHandler from './middleware/errorHandler';
+import { notFound } from './middleware/notFound';
 
 const app = express();
 
@@ -35,7 +35,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'Corpo Lingo API is running.',
@@ -51,4 +51,4 @@ app.use('/api/v1/translate', translateRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

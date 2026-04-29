@@ -1,21 +1,16 @@
 # dependencies
 node_modules/
-backend/node_modules/
-frontend/node_modules/
 
 # env files
 .env
-backend/.env
-frontend/.env
+apps/*/.env
 
 # logs
 logs
 *.log
 
-# package lock files
+# package lock files (using pnpm)
 package-lock.json
-backend/package-lock.json
-frontend/package-lock.json
 
 # build outputs
 dist/
@@ -24,6 +19,6 @@ build/
 # OS
 .DS_Store
 
-
+# Nx
 .nx/cache
 .nx/workspace-data

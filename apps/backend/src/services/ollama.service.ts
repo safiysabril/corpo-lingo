@@ -1,12 +1,26 @@
-const { buildSystemPrompt, buildUserMessage } = require('../utils/promptBuilder');
+import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
+import type { TranslationResult, TranslationService } from './types';
+import type { TranslationMode, FormalityLevel } from '../utils/constants';
 
 const OLLAMA_URL = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'llama3';
 
 /**
+ * Maps formality level → temperature.
+ */
+function getTemperature(formality: FormalityLevel): number {
+  const map: Record<FormalityLevel, number> = { low: 0.2, medium: 0.3, high: 0.4 };
+  return map[formality] ?? 0.3;
+}
+
+/**
  * Translates text using Ollama (local LLM).
  */
-async function translateText(text, mode, formality) {
+export async function translateText(
+  text: string,
+  mode: TranslationMode,
+  formality: FormalityLevel,
+): Promise<TranslationResult> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
     headers: {
@@ -20,9 +34,9 @@ async function translateText(text, mode, formality) {
       ],
       options: {
         temperature: getTemperature(formality),
-        num_predict: 1024, // similar to max_tokens
+        num_predict: 1024,
       },
-      stream: false, // important: get full response
+      stream: false,
     }),
   });
 
@@ -40,16 +54,11 @@ async function translateText(text, mode, formality) {
 
   return {
     translatedText,
-    usage: null, // Ollama doesn’t return token usage by default
+    usage: null,
     model: DEFAULT_MODEL,
-    ollama_response: data, // include full response for debugging
-    ollama_request: buildSystemPrompt(mode, formality), // include request body for debugging
+    ollama_response: data,
+    ollama_request: buildSystemPrompt(mode, formality),
   };
 }
 
-function getTemperature(formality) {
-  const map = { low: 0.2, medium: 0.3, high: 0.4 };
-  return map[formality] ?? 0.3;
-}
-
-module.exports = { translateText };
+export default { translateText } satisfies TranslationService;

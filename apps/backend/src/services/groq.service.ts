@@ -1,13 +1,15 @@
-const Groq = require('groq-sdk');
-const { buildSystemPrompt, buildUserMessage } = require('../utils/promptBuilder');
+import Groq from 'groq-sdk';
+import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
+import type { TranslationResult, TranslationService } from './types';
+import type { TranslationMode, FormalityLevel } from '../utils/constants';
 
-let _client = null;
+let _client: Groq | null = null;
 
 /**
  * Lazily initialise the Groq client so the app still boots
  * even when GROQ_API_KEY is not yet set (e.g. during tests).
  */
-function getClient() {
+function getClient(): Groq {
   if (!_client) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
@@ -32,14 +34,22 @@ function getClient() {
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
 /**
- * Translates text into corporate language using the Groq API.
- *
- * @param {string} text    - The input text to translate.
- * @param {string} mode    - 'email' | 'documentation' | 'formal'
- * @param {string} formality  - 'low' | 'medium' | 'high'
- * @returns {Promise<{ translatedText: string, usage: object, model: string }>}
+ * Maps formality level → temperature.
+ * Higher formality = less creative output.
  */
-async function translateText(text, mode, formality) {
+function getTemperature(formality: FormalityLevel): number {
+  const map: Record<FormalityLevel, number> = { low: 0.2, medium: 0.3, high: 0.4 };
+  return map[formality] ?? 0.3;
+}
+
+/**
+ * Translates text into corporate language using the Groq API.
+ */
+export async function translateText(
+  text: string,
+  mode: TranslationMode,
+  formality: FormalityLevel,
+): Promise<TranslationResult> {
   const client = getClient();
   const model = process.env.GROQ_MODEL || DEFAULT_MODEL;
 
@@ -47,7 +57,7 @@ async function translateText(text, mode, formality) {
     model,
     messages: [
       { role: 'system', content: buildSystemPrompt(mode, formality) },
-      { role: 'user',   content: buildUserMessage(text) },
+      { role: 'user', content: buildUserMessage(text) },
     ],
     temperature: getTemperature(formality),
     max_tokens: 1024,
@@ -61,18 +71,9 @@ async function translateText(text, mode, formality) {
 
   return {
     translatedText,
-    usage: completion.usage || null,
-    model,                          // expose which model was used
+    usage: (completion.usage as unknown as Record<string, number>) || null,
+    model,
   };
 }
 
-/**
- * Maps paraphrase degree → temperature.
- * Higher degree = more creative / buzzword-heavy output.
- */
-function getTemperature(formality) {
-  const map = { low: 0.2, medium: 0.3, high: 0.4 };
-  return map[formality] ?? 0.3;
-}
-
-module.exports = { translateText };
+export default { translateText } satisfies TranslationService;

@@ -1,3 +1,5 @@
+import type { TranslationService } from './types';
+
 /**
  * AI Provider Factory
  *
@@ -7,19 +9,20 @@
  * Supported values:
  *   openai  (default)
  *   groq
+ *   ollama
  */
-function getTranslationService() {
+export function getTranslationService(): TranslationService {
   const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
 
   switch (provider) {
     case 'groq':
-      return require('./groq.service');
+      return require('./groq.service').default;
 
     case 'openai':
-      return require('./openai.service');
+      return require('./openai.service').default;
 
     case 'ollama':
-      return require('./ollama.service');
+      return require('./ollama.service').default;
 
     default:
       throw new Error(
@@ -27,5 +30,3 @@ function getTranslationService() {
       );
   }
 }
-
-module.exports = { getTranslationService };

@@ -2,17 +2,18 @@
   "name": "@corpo-lingo/backend",
   "version": "1.0.0",
   "description": "Backend API for translating casual text into corporate language.",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "ts-node src/server.ts",
+    "dev": "nodemon --exec ts-node src/server.ts",
     "test": "jest --runInBand --forceExit",
     "test:watch": "jest --watch"
   },
   "jest": {
+    "preset": "ts-jest",
     "testEnvironment": "node",
     "testMatch": [
-      "**/tests/**/*.test.js"
+      "**/tests/**/*.test.ts"
     ]
   },
   "keywords": [],
@@ -20,7 +21,7 @@
   "coauthor": "Safiy",
   "license": "UNLICENSED",
   "private": true,
-  "dependencies": { 
+  "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -31,8 +32,16 @@
     "morgan": "^1.10.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/morgan": "^1.9.10",
+    "@types/supertest": "^7.2.0",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }

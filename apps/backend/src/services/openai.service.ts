@@ -1,32 +1,47 @@
-const { buildSystemPrompt, buildUserMessage } = require('../utils/promptBuilder');
+import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
+import type { TranslationResult, TranslationService } from './types';
+import type { TranslationMode, FormalityLevel } from '../utils/constants';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 /**
- * Translates text into corporate language using OpenAI.
- *
- * @param {string} text     - The input text to translate.
- * @param {string} mode     - Translation mode: 'email' | 'documentation' | 'formal'
- * @param {string} degree   - Paraphrasing degree: 'few' | 'moderate' | 'high'
- * @returns {Promise<{ translatedText: string, usage: object }>}
+ * Maps formality level to a temperature value.
+ * Higher formality = slightly more creative output.
  */
-async function translateText(text, mode, degree) {
+function getTemperature(formality: FormalityLevel): number {
+  const temperatures: Record<FormalityLevel, number> = {
+    low: 0.3,
+    medium: 0.6,
+    high: 0.85,
+  };
+  return temperatures[formality] ?? 0.6;
+}
+
+/**
+ * Translates text into corporate language using OpenAI.
+ */
+export async function translateText(
+  text: string,
+  mode: TranslationMode,
+  formality: FormalityLevel,
+): Promise<TranslationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
     throw new Error('OpenAI API key is not configured. Set OPENAI_API_KEY in your .env file.');
   }
 
-  const systemPrompt = buildSystemPrompt(mode, degree);
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const systemPrompt = buildSystemPrompt(mode, formality);
   const userMessage = buildUserMessage(text);
 
   const payload = {
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
-    temperature: getTemperature(degree),
+    temperature: getTemperature(formality),
     max_tokens: 1024,
   };
 
@@ -40,12 +55,12 @@ async function translateText(text, mode, degree) {
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
+    const errorBody: any = await response.json().catch(() => ({}));
     const message = errorBody?.error?.message || `OpenAI API error: ${response.status}`;
     throw new Error(message);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   const translatedText = data.choices?.[0]?.message?.content?.trim();
 
   if (!translatedText) {
@@ -55,20 +70,8 @@ async function translateText(text, mode, degree) {
   return {
     translatedText,
     usage: data.usage || null,
+    model,
   };
 }
 
-/**
- * Maps paraphrase degree to a temperature value.
- * Higher degree = slightly more creative output.
- */
-function getTemperature(degree) {
-  const temperatures = {
-    few: 0.3,
-    moderate: 0.6,
-    high: 0.85,
-  };
-  return temperatures[degree] ?? 0.6;
-}
-
-module.exports = { translateText };
+export default { translateText } satisfies TranslationService;

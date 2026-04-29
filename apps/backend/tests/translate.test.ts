@@ -1,4 +1,5 @@
-const request = require('supertest');
+import request from 'supertest';
+import app from '../src/app';
 
 // Mock the factory so tests never touch a real AI API
 jest.mock('../src/services/ai.factory', () => ({
@@ -11,8 +12,6 @@ jest.mock('../src/services/ai.factory', () => ({
   }),
 }));
 
-const app = require('../src/app');
-
 describe('GET /health', () => {
   it('returns 200 and status message', async () => {
     const res = await request(app).get('/health');
@@ -22,11 +21,11 @@ describe('GET /health', () => {
 });
 
 describe('GET /api/v1/translate/options', () => {
-  it('returns modes and degrees', async () => {
+  it('returns modes and formality levels', async () => {
     const res = await request(app).get('/api/v1/translate/options');
     expect(res.status).toBe(200);
     expect(res.body.data.modes).toEqual(['email', 'documentation', 'formal']);
-    expect(res.body.data.degrees).toEqual(['few', 'moderate', 'high']);
+    expect(res.body.data.formality).toEqual(['low', 'medium', 'high']);
   });
 });
 
@@ -34,7 +33,7 @@ describe('POST /api/v1/translate', () => {
   const validPayload = {
     text: "Hey, can we chat about the project? It's kind of a mess right now.",
     mode: 'email',
-    degree: 'moderate',
+    formality: 'medium',
   };
 
   it('translates text and returns provider info in meta', async () => {
@@ -50,7 +49,7 @@ describe('POST /api/v1/translate', () => {
   it('returns 422 when text is missing', async () => {
     const res = await request(app)
       .post('/api/v1/translate')
-      .send({ mode: 'email', degree: 'few' });
+      .send({ mode: 'email', formality: 'low' });
     expect(res.status).toBe(422);
     expect(res.body.success).toBe(false);
   });
@@ -62,10 +61,10 @@ describe('POST /api/v1/translate', () => {
     expect(res.status).toBe(422);
   });
 
-  it('returns 422 for invalid degree', async () => {
+  it('returns 422 for invalid formality', async () => {
     const res = await request(app)
       .post('/api/v1/translate')
-      .send({ ...validPayload, degree: 'extreme' });
+      .send({ ...validPayload, formality: 'extreme' });
     expect(res.status).toBe(422);
   });
 

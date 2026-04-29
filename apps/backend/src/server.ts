@@ -1,5 +1,5 @@
-require('dotenv').config();
-const app = require('./app');
+import 'dotenv/config';
+import app from './app';
 
 const PORT = process.env.PORT || 3000;
 
@@ -18,7 +18,7 @@ process.on('SIGTERM', () => {
   });
 });
 
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err.message);
+process.on('unhandledRejection', (err: any) => {
+  console.error('Unhandled Rejection:', err?.message);
   server.close(() => process.exit(1));
 });
