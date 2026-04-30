@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { getTranslationService } from '../services/ai.factory';
 import { TRANSLATION_MODES, FORMALITY_LEVELS } from '../utils/constants';
-import type { TranslationMode, FormalityLevel } from '../utils/constants';
+import type { TranslatePayload, TranslateResponse } from '@corpo-lingo/shared';
 
 /**
  * POST /api/v1/translate
@@ -9,26 +9,20 @@ import type { TranslationMode, FormalityLevel } from '../utils/constants';
  */
 export async function translate(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { text, mode, formality } = req.body as {
-      text: string;
-      mode: TranslationMode;
-      formality: FormalityLevel;
-    };
+    const { text, mode, formality } = req.body as TranslatePayload;
 
     // Resolved at request-time — AI_PROVIDER can be changed without restart
     const service = getTranslationService();
     const { translatedText, usage, model, ollama_response, ollama_request } =
-      await service.translateText(text, mode, formality);
+      await service.translateText(text, mode as any, formality as any);
 
-    res.status(200).json({
+    const response: TranslateResponse = {
       success: true,
       data: {
         original: text,
         translated: translatedText,
         mode,
         formality,
-        llm_request: ollama_request,
-        llm_response: ollama_response,
       },
       meta: {
         provider: process.env.AI_PROVIDER || 'openai',
@@ -36,7 +30,11 @@ export async function translate(req: Request, res: Response, next: NextFunction)
         usage,
         timestamp: new Date().toISOString(),
       },
-    });
+    };
+
+    // Note: We safely omit llm_request/response from the strict shared type
+    // but can still pass it loosely if needed, or stick strictly to the shared type.
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
