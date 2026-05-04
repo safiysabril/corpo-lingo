@@ -1,0 +1,20 @@
+services:
+  backend:
+    build:
+      context: .                          # <-- must be repo root
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - apps/backend/.env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .                          # <-- must be repo root
+      dockerfile: apps/frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

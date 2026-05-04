@@ -4,10 +4,10 @@
   "description": "Backend API for translating casual text into corporate language.",
   "main": "src/server.ts",
   "scripts": {
-    "start": "tsx src/server.ts",
+    "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "test": "jest --runInBand --forceExit",
-    "test:watch": "jest --watch"
+    "build": "tsc",
+    "test": "jest --runInBand --forceExit"
   },
   "jest": {
     "preset": "ts-jest",

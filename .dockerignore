@@ -1,0 +1,23 @@
+# Dependencies & caches
+**/node_modules
+.pnpm-store
+.nx/cache
+.nx/workspace-data
+
+# Build outputs
+**/dist
+**/.turbo
+
+# Dev / editor files
+.env*
+apps/*/.env
+**/*.log
+.git
+.gitignore
+.DS_Store
+README.md
+
+# Test artifacts
+**/coverage
+**/*.test.ts
+**/tests

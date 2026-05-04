@@ -1,6 +1,6 @@
 import type { TranslatePayload, TranslateResponse } from '@corpo-lingo/shared';
 
-const BASE_URL = 'http://localhost:3000/api/v1';
+const BASE_URL = '/api/v1';
 
 export async function translateText(payload: TranslatePayload): Promise<TranslateResponse> {
   const res = await fetch(`${BASE_URL}/translate`, {

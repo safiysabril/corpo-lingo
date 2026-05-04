@@ -2,7 +2,7 @@
   "name": "corpo-lingo",
   "private": true,
   "scripts": {
-    "dev": "pnpm run --parallel dev",
+    "dev": "pnpm --filter @corpo-lingo/shared build && pnpm run --parallel dev",
     "nx-dev": "nx run-many -t dev",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",

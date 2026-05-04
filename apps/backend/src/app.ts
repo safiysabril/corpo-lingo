@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -8,7 +8,7 @@ import translateRoutes from './routes/translate.routes';
 import errorHandler from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 
-const app = express();
+const app: Express = express();
 
 // Security & Middleware
 app.use(helmet());
