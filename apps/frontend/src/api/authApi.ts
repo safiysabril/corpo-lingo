@@ -46,3 +46,7 @@ export async function getHistory(): Promise<TranslationHistoryItem[]> {
   );
   return data.data;
 }
+
+export async function deleteHistoryItem(id: string): Promise<void> {
+  await request(`/api/v1/translate/history/${id}`, { method: 'DELETE' });
+}

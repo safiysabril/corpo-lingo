@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { translateText } from "@/api/translateApi";
-import { getHistory } from "@/api/authApi";
+import { getHistory, deleteHistoryItem } from "@/api/authApi";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
     ArrowRight, Copy, Check, Briefcase, FileText, Award,
-    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut,
+    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2,
 } from "lucide-react";
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -74,6 +74,13 @@ export default function Translator() {
         setResult(item.output);
         setMode(item.mode);
         setDegree(item.formality);
+    };
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        await deleteHistoryItem(id);
+        if (currentId === id) handleNew();
+        queryClient.invalidateQueries({ queryKey: ["history"] });
     };
 
     const handleTranslate = async () => {
@@ -158,26 +165,37 @@ export default function Translator() {
                             </div>
                         ) : (
                             history.map((item) => (
-                                <button
+                                <div
                                     key={item.id}
-                                    onClick={() => loadHistory(item)}
                                     className={cn(
-                                        "flex flex-col items-start p-3 text-left rounded-lg transition-colors border",
+                                        "group flex items-start rounded-lg transition-colors border",
                                         currentId === item.id
                                             ? "bg-primary/10 border-primary/30"
                                             : "bg-background border-transparent hover:border-border hover:bg-card"
                                     )}
                                 >
-                                    <div className="flex items-center gap-2 mb-1 text-foreground">
-                                        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                                        <span className="text-xs font-medium truncate w-full">
-                                            {item.input.substring(0, 25) || "New translation…"}
-                                        </span>
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground">
-                                        {new Date(item.createdAt).toLocaleDateString()} • {item.mode}
-                                    </div>
-                                </button>
+                                    <button
+                                        onClick={() => loadHistory(item)}
+                                        className="flex-1 flex flex-col items-start p-3 text-left min-w-0"
+                                    >
+                                        <div className="flex items-center gap-2 mb-1 text-foreground w-full">
+                                            <MessageSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                            <span className="text-xs font-medium truncate">
+                                                {item.input.substring(0, 25) || "New translation…"}
+                                            </span>
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground">
+                                            {new Date(item.createdAt).toLocaleDateString()} • {item.mode}
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDelete(e, item.id)}
+                                        className="shrink-0 p-2 mt-1 mr-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                                        aria-label="Delete"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             ))
                         )}
                     </div>

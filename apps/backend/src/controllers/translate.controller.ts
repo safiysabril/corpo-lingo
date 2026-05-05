@@ -62,6 +62,20 @@ export function getOptions(_req: Request, res: Response): void {
   });
 }
 
+export function deleteHistoryItem(req: Request, res: Response): void {
+  const userId = (req as AuthenticatedRequest).user.sub;
+  const { id } = req.params;
+
+  const result = db.prepare('DELETE FROM translations WHERE id = ? AND user_id = ?').run(id, userId);
+
+  if (result.changes === 0) {
+    res.status(404).json({ success: false, error: 'Item not found' });
+    return;
+  }
+
+  res.status(200).json({ success: true });
+}
+
 export function getHistory(req: Request, res: Response): void {
   const userId = (req as AuthenticatedRequest).user.sub;
 
