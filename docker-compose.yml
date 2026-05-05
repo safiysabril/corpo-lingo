@@ -1,20 +1,27 @@
 services:
   backend:
     build:
-      context: .                          # <-- must be repo root
+      context: .
       dockerfile: apps/backend/Dockerfile
     ports:
       - "3000:3000"
     env_file:
       - apps/backend/.env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   frontend:
     build:
-      context: .                          # <-- must be repo root
+      context: .
       dockerfile: apps/frontend/Dockerfile
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

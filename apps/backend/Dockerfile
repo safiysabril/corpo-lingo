@@ -1,5 +1,5 @@
 FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN apk upgrade --no-cache && corepack enable && corepack prepare pnpm@9 --activate
 
 # ── Install ALL deps (needed for tsc) ────────────────────────
 FROM base AS deps
@@ -34,6 +34,10 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy compiled output only — no source, no devDeps
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/backend/dist ./apps/backend/dist
+
+# Run as non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
 EXPOSE 3000
 CMD ["node", "apps/backend/dist/server.js"]

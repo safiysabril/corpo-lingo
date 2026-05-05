@@ -3,17 +3,18 @@ import { translateText } from "@/api/translateApi";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowRight, Copy, Check, Briefcase, FileText, Award, Sparkles, Moon, Sun, Plus, MessageSquare } from "lucide-react";
+import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 
-const modes = [
-    { value: "email", label: "Email", icon: Briefcase, description: "Professional emails" },
-    { value: "documentation", label: "Docs", icon: FileText, description: "Technical writing" },
-    { value: "formal", label: "Formal", icon: Award, description: "Official tone" },
+const modes: Array<{ value: TranslationMode; label: string; icon: typeof Briefcase; description: string }> = [
+    { value: TRANSLATION_MODES.EMAIL, label: "Email", icon: Briefcase, description: "Professional emails" },
+    { value: TRANSLATION_MODES.DOCUMENTATION, label: "Docs", icon: FileText, description: "Technical writing" },
+    { value: TRANSLATION_MODES.FORMAL, label: "Formal", icon: Award, description: "Official tone" },
 ];
 
-const degrees = [
-    { value: "low", label: "Subtle" },
-    { value: "medium", label: "Moderate" },
-    { value: "high", label: "Maximum" },
+const degrees: Array<{ value: FormalityLevel; label: string }> = [
+    { value: FORMALITY_LEVELS.LOW, label: "Subtle" },
+    { value: FORMALITY_LEVELS.MEDIUM, label: "Moderate" },
+    { value: FORMALITY_LEVELS.HIGH, label: "Maximum" },
 ];
 
 type HistoryItem = {
@@ -21,14 +22,14 @@ type HistoryItem = {
     timestamp: number;
     input: string;
     result: string;
-    mode: string;
-    degree: string;
+    mode: TranslationMode;
+    degree: FormalityLevel;
 };
 
 export default function Translator() {
     const [text, setText] = useState("");
-    const [mode, setMode] = useState("email");
-    const [degree, setDegree] = useState("medium");
+    const [mode, setMode] = useState<TranslationMode>(TRANSLATION_MODES.EMAIL);
+    const [degree, setDegree] = useState<FormalityLevel>(FORMALITY_LEVELS.MEDIUM);
     const [result, setResult] = useState("");
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -63,8 +64,8 @@ export default function Translator() {
         setCurrentId(null);
         setText("");
         setResult("");
-        setMode("email");
-        setDegree("medium");
+        setMode(TRANSLATION_MODES.EMAIL);
+        setDegree(FORMALITY_LEVELS.MEDIUM);
     };
 
     const loadHistory = (item: HistoryItem) => {
@@ -103,8 +104,8 @@ export default function Translator() {
                 return [newItem, ...prev];
             });
             setCurrentId(newItem.id);
-        } catch (err: any) {
-            setResult(err.message);
+        } catch (err) {
+            setResult(err instanceof Error ? err.message : 'Translation failed');
         } finally {
             setLoading(false);
         }

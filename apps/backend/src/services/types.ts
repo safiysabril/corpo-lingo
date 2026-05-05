@@ -1,4 +1,4 @@
-import type { TranslationMode, FormalityLevel } from '../utils/constants';
+import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
 /** Shape returned by all AI translation services */
 export interface TranslationResult {

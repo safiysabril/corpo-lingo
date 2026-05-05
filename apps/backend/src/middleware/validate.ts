@@ -1,5 +1,5 @@
 import { body, validationResult } from 'express-validator';
-import { TRANSLATION_MODES, FORMALITY_LEVELS } from '../utils/constants';
+import { TRANSLATION_MODES, FORMALITY_LEVELS } from '@corpo-lingo/shared';
 import type { Request, Response, NextFunction } from 'express';
 
 export const validateTranslation = [

@@ -1,4 +1,4 @@
-import type { TranslationMode, FormalityLevel } from './constants';
+import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
 /**
  * Builds the system prompt for the AI model based on mode and formality.

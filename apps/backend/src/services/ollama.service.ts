@@ -1,6 +1,6 @@
 import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
 import type { TranslationResult, TranslationService } from './types';
-import type { TranslationMode, FormalityLevel } from '../utils/constants';
+import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
 const OLLAMA_URL = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'llama3';

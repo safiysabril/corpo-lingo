@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
 import type { TranslationResult, TranslationService } from './types';
-import type { TranslationMode, FormalityLevel } from '../utils/constants';
+import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
 let _client: Groq | null = null;
 

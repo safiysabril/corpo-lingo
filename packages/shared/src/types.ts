@@ -1,7 +1,9 @@
+import type { TranslationMode, FormalityLevel } from './constants';
+
 export interface TranslatePayload {
   text: string;
-  mode: string;
-  formality: string;
+  mode: TranslationMode;
+  formality: FormalityLevel;
 }
 
 export interface TranslateResponse {

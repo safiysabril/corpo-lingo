@@ -1,1 +1,0 @@
-export * from '@corpo-lingo/shared';

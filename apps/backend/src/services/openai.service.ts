@@ -1,6 +1,6 @@
 import { buildSystemPrompt, buildUserMessage } from '../utils/promptBuilder';
 import type { TranslationResult, TranslationService } from './types';
-import type { TranslationMode, FormalityLevel } from '../utils/constants';
+import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -55,12 +55,12 @@ export async function translateText(
   });
 
   if (!response.ok) {
-    const errorBody: any = await response.json().catch(() => ({}));
+    const errorBody = await response.json().catch(() => ({})) as { error?: { message?: string } };
     const message = errorBody?.error?.message || `OpenAI API error: ${response.status}`;
     throw new Error(message);
   }
 
-  const data: any = await response.json();
+  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: Record<string, number> };
   const translatedText = data.choices?.[0]?.message?.content?.trim();
 
   if (!translatedText) {
@@ -69,7 +69,7 @@ export async function translateText(
 
   return {
     translatedText,
-    usage: data.usage || null,
+    usage: (data.usage as Record<string, number>) ?? null,
     model,
   };
 }

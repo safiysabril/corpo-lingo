@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { getTranslationService } from '../services/ai.factory';
-import { TRANSLATION_MODES, FORMALITY_LEVELS } from '../utils/constants';
+import { TRANSLATION_MODES, FORMALITY_LEVELS } from '@corpo-lingo/shared';
 import type { TranslatePayload, TranslateResponse } from '@corpo-lingo/shared';
 
 /**
@@ -11,10 +11,9 @@ export async function translate(req: Request, res: Response, next: NextFunction)
   try {
     const { text, mode, formality } = req.body as TranslatePayload;
 
-    // Resolved at request-time — AI_PROVIDER can be changed without restart
     const service = getTranslationService();
-    const { translatedText, usage, model, ollama_response, ollama_request } =
-      await service.translateText(text, mode as any, formality as any);
+    const { translatedText, usage, model } =
+      await service.translateText(text, mode, formality);
 
     const response: TranslateResponse = {
       success: true,
