@@ -20,7 +20,8 @@ RUN pnpm --filter @corpo-lingo/frontend build
 
 # Vite output is static — serve with nginx, no Node needed
 FROM nginx:alpine AS prod
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && apk add --no-cache gettext
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
-COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/frontend/nginx.conf.template /etc/nginx/conf.d/nginx.conf.template
 EXPOSE 80
+CMD ["/bin/sh", "-c", "envsubst '${BACKEND_HOST}' < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
