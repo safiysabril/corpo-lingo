@@ -1,9 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { translateText } from "@/api/translateApi";
+import { getHistory } from "@/api/authApi";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowRight, Copy, Check, Briefcase, FileText, Award, Sparkles, Moon, Sun, Plus, MessageSquare } from "lucide-react";
+import {
+    ArrowRight, Copy, Check, Briefcase, FileText, Award,
+    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut,
+} from "lucide-react";
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
+import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const modes: Array<{ value: TranslationMode; label: string; icon: typeof Briefcase; description: string }> = [
     { value: TRANSLATION_MODES.EMAIL, label: "Email", icon: Briefcase, description: "Professional emails" },
@@ -17,30 +24,18 @@ const degrees: Array<{ value: FormalityLevel; label: string }> = [
     { value: FORMALITY_LEVELS.HIGH, label: "Maximum" },
 ];
 
-type HistoryItem = {
-    id: string;
-    timestamp: number;
-    input: string;
-    result: string;
-    mode: TranslationMode;
-    degree: FormalityLevel;
-};
-
 export default function Translator() {
+    const navigate = useNavigate();
+    const { data: authUser } = useAuth();
+    const logout = useLogout();
+    const queryClient = useQueryClient();
+
     const [text, setText] = useState("");
     const [mode, setMode] = useState<TranslationMode>(TRANSLATION_MODES.EMAIL);
     const [degree, setDegree] = useState<FormalityLevel>(FORMALITY_LEVELS.MEDIUM);
     const [result, setResult] = useState("");
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
-    
-    const [history, setHistory] = useState<HistoryItem[]>(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("translation_history");
-            if (saved) return JSON.parse(saved);
-        }
-        return [];
-    });
     const [currentId, setCurrentId] = useState<string | null>(null);
 
     const [dark, setDark] = useState(() => {
@@ -51,14 +46,19 @@ export default function Translator() {
         return false;
     });
 
-    useEffect(() => {
-        document.documentElement.classList.toggle("dark", dark);
-        localStorage.setItem("theme", dark ? "dark" : "light");
-    }, [dark]);
+    const { data: history = [] } = useQuery({
+        queryKey: ["history"],
+        queryFn: getHistory,
+    });
 
-    useEffect(() => {
-        localStorage.setItem("translation_history", JSON.stringify(history));
-    }, [history]);
+    const toggleDark = () => {
+        setDark((d) => {
+            const next = !d;
+            document.documentElement.classList.toggle("dark", next);
+            localStorage.setItem("theme", next ? "dark" : "light");
+            return next;
+        });
+    };
 
     const handleNew = () => {
         setCurrentId(null);
@@ -68,12 +68,12 @@ export default function Translator() {
         setDegree(FORMALITY_LEVELS.MEDIUM);
     };
 
-    const loadHistory = (item: HistoryItem) => {
+    const loadHistory = (item: (typeof history)[number]) => {
         setCurrentId(item.id);
         setText(item.input);
-        setResult(item.result);
+        setResult(item.output);
         setMode(item.mode);
-        setDegree(item.degree);
+        setDegree(item.formality);
     };
 
     const handleTranslate = async () => {
@@ -83,29 +83,12 @@ export default function Translator() {
             setResult("");
             const data = await translateText({ text, mode, formality: degree });
             const translated = data.data?.translated || "No result";
+            const id = (data.data as { id?: string })?.id ?? null;
             setResult(translated);
-            
-            const newItem: HistoryItem = {
-                id: currentId || Date.now().toString(),
-                timestamp: Date.now(),
-                input: text,
-                result: translated,
-                mode,
-                degree
-            };
-            
-            setHistory(prev => {
-                const existing = prev.findIndex(h => h.id === newItem.id);
-                if (existing >= 0) {
-                    const newHist = [...prev];
-                    newHist[existing] = newItem;
-                    return newHist;
-                }
-                return [newItem, ...prev];
-            });
-            setCurrentId(newItem.id);
+            setCurrentId(id);
+            queryClient.invalidateQueries({ queryKey: ["history"] });
         } catch (err) {
-            setResult(err instanceof Error ? err.message : 'Translation failed');
+            setResult(err instanceof Error ? err.message : "Translation failed");
         } finally {
             setLoading(false);
         }
@@ -118,6 +101,11 @@ export default function Translator() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleLogout = async () => {
+        await logout();
+        navigate("/");
+    };
+
     return (
         <div className="h-screen bg-background flex flex-col overflow-hidden">
             {/* Header */}
@@ -127,17 +115,28 @@ export default function Translator() {
                         <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-primary-foreground" />
                         </div>
-                        <span className="text-lg font-bold tracking-tight text-foreground">
-                            Corpo Lingo
-                        </span>
+                        <span className="text-lg font-bold tracking-tight text-foreground">Corpo Lingo</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        {authUser && (
+                            <span className="hidden sm:block text-xs text-muted-foreground">
+                                {authUser.name}
+                            </span>
+                        )}
                         <button
-                            onClick={() => setDark((d) => !d)}
+                            onClick={toggleDark}
                             className="w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                             aria-label="Toggle dark mode"
                         >
                             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Sign out"
+                            title="Sign out"
+                        >
+                            <LogOut className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
@@ -158,25 +157,25 @@ export default function Translator() {
                                 No history yet.
                             </div>
                         ) : (
-                            history.map(item => (
+                            history.map((item) => (
                                 <button
                                     key={item.id}
                                     onClick={() => loadHistory(item)}
                                     className={cn(
                                         "flex flex-col items-start p-3 text-left rounded-lg transition-colors border",
-                                        currentId === item.id 
-                                            ? "bg-primary/10 border-primary/30" 
+                                        currentId === item.id
+                                            ? "bg-primary/10 border-primary/30"
                                             : "bg-background border-transparent hover:border-border hover:bg-card"
                                     )}
                                 >
                                     <div className="flex items-center gap-2 mb-1 text-foreground">
                                         <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
                                         <span className="text-xs font-medium truncate w-full">
-                                            {item.input.substring(0, 25) || "New translation..."}
+                                            {item.input.substring(0, 25) || "New translation…"}
                                         </span>
                                     </div>
                                     <div className="text-[10px] text-muted-foreground">
-                                        {new Date(item.timestamp).toLocaleDateString()} • {item.mode}
+                                        {new Date(item.createdAt).toLocaleDateString()} • {item.mode}
                                     </div>
                                 </button>
                             ))
@@ -184,10 +183,9 @@ export default function Translator() {
                     </div>
                 </aside>
 
-                {/* Main Content Area */}
+                {/* Main Content */}
                 <main className="flex-1 overflow-y-auto w-full px-4 py-8">
                     <div className="max-w-4xl mx-auto flex flex-col">
-                        {/* Hero */}
                         {(!currentId && !text && !result) && (
                             <div className="text-center mb-10 mt-4">
                                 <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground mb-3">
@@ -199,14 +197,11 @@ export default function Translator() {
                             </div>
                         )}
 
-                        {/* Cards Grid */}
                         <div className="grid lg:grid-cols-2 gap-6">
                             {/* Input Card */}
                             <div className="bg-card rounded-xl border border-border shadow-card p-5 flex flex-col gap-5">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                                        Input
-                                    </h2>
+                                    <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Input</h2>
                                     <span className="text-xs text-muted-foreground">{text.length} chars</span>
                                 </div>
 
@@ -215,7 +210,7 @@ export default function Translator() {
                                     className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-sans disabled:opacity-70 disabled:cursor-not-allowed"
                                     value={text}
                                     onChange={(e) => setText(e.target.value)}
-                                    placeholder="Type or paste your text here..."
+                                    placeholder="Type or paste your text here…"
                                     disabled={!!currentId}
                                 />
 
@@ -272,12 +267,7 @@ export default function Translator() {
                                 </div>
 
                                 {currentId ? (
-                                    <Button
-                                        variant="outline"
-                                        size="lg"
-                                        onClick={handleNew}
-                                        className="w-full mt-1"
-                                    >
+                                    <Button variant="outline" size="lg" onClick={handleNew} className="w-full mt-1">
                                         <Plus className="w-4 h-4 mr-2" /> Start New Translation
                                     </Button>
                                 ) : (
@@ -305,27 +295,20 @@ export default function Translator() {
                             {/* Output Card */}
                             <div className="bg-card rounded-xl border border-border shadow-card p-5 flex flex-col gap-5">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                                        Result
-                                    </h2>
+                                    <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Result</h2>
                                     {result && (
                                         <button
                                             onClick={handleCopy}
                                             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                                         >
                                             {copied ? (
-                                                <>
-                                                    <Check className="w-3.5 h-3.5 text-success" /> Copied
-                                                </>
+                                                <><Check className="w-3.5 h-3.5 text-success" /> Copied</>
                                             ) : (
-                                                <>
-                                                    <Copy className="w-3.5 h-3.5" /> Copy
-                                                </>
+                                                <><Copy className="w-3.5 h-3.5" /> Copy</>
                                             )}
                                         </button>
                                     )}
                                 </div>
-
                                 <div
                                     className={cn(
                                         "flex-1 min-h-[200px] rounded-lg border border-input bg-background px-4 py-3 text-sm font-sans whitespace-pre-wrap",

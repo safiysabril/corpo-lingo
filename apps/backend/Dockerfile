@@ -35,8 +35,9 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/backend/dist ./apps/backend/dist
 
-# Run as non-root
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Run as non-root; pre-create /app/data so the volume mount is owned correctly
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && mkdir -p /app/data && chown appuser:appgroup /app/data
 USER appuser
 
 EXPOSE 3000

@@ -2,39 +2,40 @@ import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 
 import translateRoutes from './routes/translate.routes';
+import authRoutes from './routes/auth.routes';
 import errorHandler from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 
 const app: Express = express();
 
-// Security & Middleware
+// Trust proxy (Nginx in Docker, load balancer in prod)
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || 'http://localhost:5173',
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
 }));
 app.use(morgan('dev'));
+app.use(cookieParser());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
-  message: {
-    success: false,
-    error: 'Too many requests, please try again after 15 minutes.',
-  },
+  message: { success: false, error: 'Too many requests, please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
-// Health check
 app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
@@ -44,10 +45,9 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Routes
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/translate', translateRoutes);
 
-// 404 & Error handlers
 app.use(notFound);
 app.use(errorHandler);
 

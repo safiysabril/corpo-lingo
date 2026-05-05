@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     env_file:
       - apps/backend/.env
+    volumes:
+      - corpo-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
@@ -25,3 +27,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  corpo-data:
