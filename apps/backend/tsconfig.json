@@ -12,7 +12,11 @@
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    "baseUrl": ".",
+    "paths": {
+      "@corpo-lingo/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": [
     "src"
