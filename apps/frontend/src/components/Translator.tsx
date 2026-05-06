@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
     ArrowRight, Copy, Check, Briefcase, FileText, Award,
-    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2, LogIn,
+    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2, LogIn, X,
 } from "lucide-react";
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -37,6 +37,7 @@ export default function Translator() {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [currentId, setCurrentId] = useState<string | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const [dark, setDark] = useState(() => {
         if (typeof window !== "undefined") {
@@ -75,6 +76,7 @@ export default function Translator() {
         setResult(item.output);
         setMode(item.mode);
         setDegree(item.formality);
+        setSidebarOpen(false);
     };
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -121,6 +123,15 @@ export default function Translator() {
             <header className="w-full border-b border-border/60 bg-card/80 backdrop-blur-md shrink-0 z-10">
                 <div className="px-4 sm:px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
+                        {authUser && (
+                            <button
+                                onClick={() => setSidebarOpen(true)}
+                                className="md:hidden w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Open history"
+                            >
+                                <MessageSquare className="w-4 h-4" />
+                            </button>
+                        )}
                         <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-primary-foreground" />
                         </div>
@@ -163,15 +174,36 @@ export default function Translator() {
             </header>
 
             <div className="flex-1 flex overflow-hidden">
+                {/* Mobile backdrop */}
+                {sidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+                )}
+
                 {/* Sidebar */}
-                <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 hidden md:flex">
+                <aside className={cn(
+                    "w-64 border-r border-border bg-card/50 flex flex-col shrink-0",
+                    "fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:z-auto md:translate-x-0",
+                    sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                )}>
                     <div className="p-4 border-b border-border/60 flex items-center justify-between">
                         <h2 className="font-semibold text-sm text-foreground">History</h2>
-                        {authUser && (
-                            <Button size="sm" variant="outline" onClick={handleNew} className="h-8 px-2 gap-1">
-                                <Plus className="w-4 h-4" /> New
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {authUser && (
+                                <Button size="sm" variant="outline" onClick={handleNew} className="h-8 px-2 gap-1">
+                                    <Plus className="w-4 h-4" /> New
+                                </Button>
+                            )}
+                            <button
+                                onClick={() => setSidebarOpen(false)}
+                                className="md:hidden w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Close history"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
 
                     {authUser ? (
