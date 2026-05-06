@@ -123,15 +123,6 @@ export default function Translator() {
             <header className="w-full border-b border-border/60 bg-card/80 backdrop-blur-md shrink-0 z-10">
                 <div className="px-4 sm:px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        {authUser && (
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                className="md:hidden w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Open history"
-                            >
-                                <MessageSquare className="w-4 h-4" />
-                            </button>
-                        )}
                         <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-primary-foreground" />
                         </div>
@@ -142,6 +133,15 @@ export default function Translator() {
                             <span className="hidden sm:block text-xs text-muted-foreground">
                                 {authUser.name}
                             </span>
+                        )}
+                        {authUser && (
+                            <button
+                                onClick={() => setSidebarOpen(true)}
+                                className="md:hidden w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Open history"
+                            >
+                                <MessageSquare className="w-4 h-4" />
+                            </button>
                         )}
                         <button
                             onClick={toggleDark}
