@@ -24,4 +24,4 @@ RUN apk upgrade --no-cache && apk add --no-cache gettext
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
 COPY apps/frontend/nginx.conf.template /etc/nginx/conf.d/nginx.conf.template
 EXPOSE 80
-CMD ["/bin/sh", "-c", "NAMESERVER=$(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}') && envsubst '${BACKEND_HOST} ${NAMESERVER}' < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "export NAMESERVER=$(grep nameserver /etc/resolv.conf | head -1 | awk '{print $2}') && envsubst '${BACKEND_HOST} ${NAMESERVER}' < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
