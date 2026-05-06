@@ -23,6 +23,8 @@ services:
       dockerfile: apps/frontend/Dockerfile
     ports:
       - "80:80"
+    environment:
+      BACKEND_HOST: backend:3000
     depends_on:
       backend:
         condition: service_healthy
