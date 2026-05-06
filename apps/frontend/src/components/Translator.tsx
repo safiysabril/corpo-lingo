@@ -182,31 +182,29 @@ export default function Translator() {
                     />
                 )}
 
-                {/* Sidebar */}
-                <aside className={cn(
-                    "w-64 border-r border-border bg-card md:bg-card/50 flex flex-col shrink-0",
-                    "fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:z-auto md:translate-x-0",
-                    sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                )}>
-                    <div className="p-4 border-b border-border/60 flex items-center justify-between">
-                        <h2 className="font-semibold text-sm text-foreground">History</h2>
-                        <div className="flex items-center gap-2">
-                            {authUser && (
+                {/* Sidebar — only shown when authenticated */}
+                {authUser && (
+                    <aside className={cn(
+                        "w-64 border-r border-border bg-card md:bg-card/50 flex flex-col shrink-0",
+                        "fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:z-auto md:translate-x-0",
+                        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    )}>
+                        <div className="p-4 border-b border-border/60 flex items-center justify-between">
+                            <h2 className="font-semibold text-sm text-foreground">History</h2>
+                            <div className="flex items-center gap-2">
                                 <Button size="sm" variant="outline" onClick={handleNew} className="h-8 px-2 gap-1">
                                     <Plus className="w-4 h-4" /> New
                                 </Button>
-                            )}
-                            <button
-                                onClick={() => setSidebarOpen(false)}
-                                className="md:hidden w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Close history"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                                <button
+                                    onClick={() => setSidebarOpen(false)}
+                                    className="md:hidden w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                    aria-label="Close history"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    {authUser ? (
                         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
                             {history.length === 0 ? (
                                 <div className="text-xs text-muted-foreground text-center mt-6">
@@ -248,23 +246,8 @@ export default function Translator() {
                                 ))
                             )}
                         </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4 text-center">
-                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                                <MessageSquare className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground mb-1">Save your history</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Sign in to keep track of all your corporate translations.
-                                </p>
-                            </div>
-                            <Button size="sm" variant="outline" onClick={() => navigate("/auth")} className="gap-1.5">
-                                <LogIn className="w-3.5 h-3.5" /> Sign In
-                            </Button>
-                        </div>
-                    )}
-                </aside>
+                    </aside>
+                )}
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto w-full px-4 py-8">
