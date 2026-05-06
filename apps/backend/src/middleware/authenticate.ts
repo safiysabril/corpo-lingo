@@ -7,6 +7,19 @@ export interface AuthenticatedRequest extends Request {
   user: { sub: number; email: string; name: string };
 }
 
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction): void {
+  const token = (req as Request & { cookies: Record<string, string> }).cookies?.token;
+  if (token) {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET) as unknown as { sub: number; email: string; name: string };
+      (req as AuthenticatedRequest).user = payload;
+    } catch {
+      // ignore invalid token — user proceeds as guest
+    }
+  }
+  next();
+}
+
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
   const token = (req as Request & { cookies: Record<string, string> }).cookies?.token;
   if (!token) {

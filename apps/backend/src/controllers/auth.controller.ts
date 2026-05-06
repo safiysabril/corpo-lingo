@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '../db';
+import pool from '../db';
 import type { RegisterPayload, LoginPayload, UserProfile } from '@corpo-lingo/shared';
 import type { AuthenticatedRequest } from '../middleware/authenticate';
 
@@ -25,34 +25,37 @@ interface UserRow {
   password_hash: string;
 }
 
-export function register(req: Request, res: Response): void {
+export async function register(req: Request, res: Response): Promise<void> {
   const { name, email, password } = req.body as RegisterPayload;
 
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (existing) {
+  const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+  if (existing.rows.length > 0) {
     res.status(409).json({ success: false, error: 'Email already in use.' });
     return;
   }
 
-  const hash = bcrypt.hashSync(password, 12);
-  const result = db
-    .prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
-    .run(name, email, hash);
+  const hash = await bcrypt.hash(password, 12);
+  const result = await pool.query(
+    'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+    [name, email, hash],
+  );
 
-  const user: UserProfile = { id: Number(result.lastInsertRowid), name, email };
+  const user: UserProfile = { id: result.rows[0].id, name, email };
   const token = jwt.sign({ sub: user.id, email, name }, JWT_SECRET, { expiresIn: '7d' });
 
   res.cookie(COOKIE_NAME, token, cookieOptions()).status(201).json({ success: true, user });
 }
 
-export function login(req: Request, res: Response): void {
+export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body as LoginPayload;
 
-  const row = db
-    .prepare('SELECT id, name, email, password_hash FROM users WHERE email = ?')
-    .get(email) as UserRow | undefined;
+  const result = await pool.query(
+    'SELECT id, name, email, password_hash FROM users WHERE email = $1',
+    [email],
+  );
+  const row = result.rows[0] as UserRow | undefined;
 
-  if (!row || !bcrypt.compareSync(password, row.password_hash)) {
+  if (!row || !(await bcrypt.compare(password, row.password_hash))) {
     res.status(401).json({ success: false, error: 'Invalid email or password.' });
     return;
   }

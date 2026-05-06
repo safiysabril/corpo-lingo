@@ -30,7 +30,7 @@ export default function Auth() {
                 : await register({ name: form.name, email: form.email, password: form.password });
 
             queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
-            navigate("/translate");
+            navigate("/");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong.");
         } finally {

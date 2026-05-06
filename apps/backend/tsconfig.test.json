@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "moduleDetection": "auto",
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["src", "tests"]
+}

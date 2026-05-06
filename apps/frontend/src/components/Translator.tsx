@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
     ArrowRight, Copy, Check, Briefcase, FileText, Award,
-    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2,
+    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2, LogIn,
 } from "lucide-react";
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -49,6 +49,7 @@ export default function Translator() {
     const { data: history = [] } = useQuery({
         queryKey: ["history"],
         queryFn: getHistory,
+        enabled: !!authUser,
     });
 
     const toggleDark = () => {
@@ -92,8 +93,9 @@ export default function Translator() {
             const translated = data.data?.translated || "No result";
             const id = (data.data as { id?: string })?.id ?? null;
             setResult(translated);
-            setCurrentId(id);
-            queryClient.invalidateQueries({ queryKey: ["history"] });
+            // only lock the form with an id if the user is logged in (history was saved)
+            setCurrentId(authUser ? id : null);
+            if (authUser) queryClient.invalidateQueries({ queryKey: ["history"] });
         } catch (err) {
             setResult(err instanceof Error ? err.message : "Translation failed");
         } finally {
@@ -110,7 +112,7 @@ export default function Translator() {
 
     const handleLogout = async () => {
         await logout();
-        navigate("/");
+        handleNew();
     };
 
     return (
@@ -137,68 +139,99 @@ export default function Translator() {
                         >
                             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                         </button>
-                        <button
-                            onClick={handleLogout}
-                            className="w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Sign out"
-                            title="Sign out"
-                        >
-                            <LogOut className="w-4 h-4" />
-                        </button>
+                        {authUser ? (
+                            <button
+                                onClick={handleLogout}
+                                className="w-9 h-9 rounded-lg border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Sign out"
+                                title="Sign out"
+                            >
+                                <LogOut className="w-4 h-4" />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => navigate("/auth")}
+                                className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-secondary text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Sign in"
+                            >
+                                <LogIn className="w-4 h-4" />
+                                <span className="hidden sm:inline">Sign In</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
 
             <div className="flex-1 flex overflow-hidden">
-                {/* Sidebar History */}
+                {/* Sidebar */}
                 <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 hidden md:flex">
                     <div className="p-4 border-b border-border/60 flex items-center justify-between">
                         <h2 className="font-semibold text-sm text-foreground">History</h2>
-                        <Button size="sm" variant="outline" onClick={handleNew} className="h-8 px-2 gap-1">
-                            <Plus className="w-4 h-4" /> New
-                        </Button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-                        {history.length === 0 ? (
-                            <div className="text-xs text-muted-foreground text-center mt-6">
-                                No history yet.
-                            </div>
-                        ) : (
-                            history.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className={cn(
-                                        "group flex items-start rounded-lg transition-colors border",
-                                        currentId === item.id
-                                            ? "bg-primary/10 border-primary/30"
-                                            : "bg-background border-transparent hover:border-border hover:bg-card"
-                                    )}
-                                >
-                                    <button
-                                        onClick={() => loadHistory(item)}
-                                        className="flex-1 flex flex-col items-start p-3 text-left min-w-0"
-                                    >
-                                        <div className="flex items-center gap-2 mb-1 text-foreground w-full">
-                                            <MessageSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                            <span className="text-xs font-medium truncate">
-                                                {item.input.substring(0, 25) || "New translation…"}
-                                            </span>
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground">
-                                            {new Date(item.createdAt).toLocaleDateString()} • {item.mode}
-                                        </div>
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleDelete(e, item.id)}
-                                        className="shrink-0 p-2 mt-1 mr-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                                        aria-label="Delete"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            ))
+                        {authUser && (
+                            <Button size="sm" variant="outline" onClick={handleNew} className="h-8 px-2 gap-1">
+                                <Plus className="w-4 h-4" /> New
+                            </Button>
                         )}
                     </div>
+
+                    {authUser ? (
+                        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                            {history.length === 0 ? (
+                                <div className="text-xs text-muted-foreground text-center mt-6">
+                                    No history yet.
+                                </div>
+                            ) : (
+                                history.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className={cn(
+                                            "group flex items-start rounded-lg transition-colors border",
+                                            currentId === item.id
+                                                ? "bg-primary/10 border-primary/30"
+                                                : "bg-background border-transparent hover:border-border hover:bg-card"
+                                        )}
+                                    >
+                                        <button
+                                            onClick={() => loadHistory(item)}
+                                            className="flex-1 flex flex-col items-start p-3 text-left min-w-0"
+                                        >
+                                            <div className="flex items-center gap-2 mb-1 text-foreground w-full">
+                                                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                <span className="text-xs font-medium truncate">
+                                                    {item.input.substring(0, 25) || "New translation…"}
+                                                </span>
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground">
+                                                {new Date(item.createdAt).toLocaleDateString()} • {item.mode}
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDelete(e, item.id)}
+                                            className="shrink-0 p-2 mt-1 mr-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                                            aria-label="Delete"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4 text-center">
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                                <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-foreground mb-1">Save your history</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Sign in to keep track of all your corporate translations.
+                                </p>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => navigate("/auth")} className="gap-1.5">
+                                <LogIn className="w-3.5 h-3.5" /> Sign In
+                            </Button>
+                        </div>
+                    )}
                 </aside>
 
                 {/* Main Content */}
@@ -335,6 +368,20 @@ export default function Translator() {
                                 >
                                     {result || "Your corporate translation will appear here…"}
                                 </div>
+
+                                {result && !authUser && (
+                                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/50 px-4 py-3">
+                                        <p className="text-xs text-muted-foreground">
+                                            Sign in to save this translation to your history.
+                                        </p>
+                                        <button
+                                            onClick={() => navigate("/auth")}
+                                            className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+                                        >
+                                            Sign In
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
