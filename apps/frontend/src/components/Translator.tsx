@@ -184,7 +184,7 @@ export default function Translator() {
 
                 {/* Sidebar */}
                 <aside className={cn(
-                    "w-64 border-r border-border bg-card/50 flex flex-col shrink-0",
+                    "w-64 border-r border-border bg-card md:bg-card/50 flex flex-col shrink-0",
                     "fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:z-auto md:translate-x-0",
                     sidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}>
