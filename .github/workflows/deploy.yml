@@ -3,6 +3,8 @@ name: Build & Push Images
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '**.md'
 
 jobs:
   build-and-push:
