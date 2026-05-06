@@ -5,6 +5,7 @@ import { TRANSLATION_MODES, FORMALITY_LEVELS } from '@corpo-lingo/shared';
 import type { TranslatePayload, TranslateResponse, TranslationHistoryItem } from '@corpo-lingo/shared';
 import type { AuthenticatedRequest } from '../middleware/authenticate';
 import pool from '../db';
+import { buildCacheKey, getCached, setCached } from '../utils/cache';
 
 interface TranslationRow {
   id: string;
@@ -20,8 +21,20 @@ export async function translate(req: Request, res: Response, next: NextFunction)
     const { text, mode, formality } = req.body as TranslatePayload;
     const userId = (req as AuthenticatedRequest).user?.sub;
 
-    const service = getTranslationService();
-    const { translatedText, usage, model } = await service.translateText(text, mode, formality);
+    const cacheKey = buildCacheKey(text, mode, formality);
+    const cachedOutput = await getCached(cacheKey);
+
+    let translatedText: string;
+    let usage: Record<string, number> | null = null;
+    let model: string = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+    if (cachedOutput) {
+      translatedText = cachedOutput;
+    } else {
+      const service = getTranslationService();
+      ({ translatedText, usage, model } = await service.translateText(text, mode, formality));
+      await setCached(cacheKey, translatedText);
+    }
 
     const id = randomUUID();
 
@@ -46,7 +59,7 @@ export async function translate(req: Request, res: Response, next: NextFunction)
       },
       meta: {
         provider: process.env.AI_PROVIDER || 'openai',
-        model: model || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model,
         usage,
         timestamp: new Date().toISOString(),
       },
