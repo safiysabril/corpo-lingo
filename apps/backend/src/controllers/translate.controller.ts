@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
-import { getTranslationService } from '../services/ai.factory';
+import { translateWithFallback } from '../services/ai.factory';
 import { TRANSLATION_MODES, FORMALITY_LEVELS } from '@corpo-lingo/shared';
 import type { TranslatePayload, TranslateResponse, TranslationHistoryItem } from '@corpo-lingo/shared';
 import type { AuthenticatedRequest } from '../middleware/authenticate';
@@ -31,8 +31,7 @@ export async function translate(req: Request, res: Response, next: NextFunction)
     if (cachedOutput) {
       translatedText = cachedOutput;
     } else {
-      const service = getTranslationService();
-      ({ translatedText, usage, model } = await service.translateText(text, mode, formality));
+      ({ translatedText, usage, model } = await translateWithFallback(text, mode, formality));
       await setCached(cacheKey, translatedText);
     }
 
