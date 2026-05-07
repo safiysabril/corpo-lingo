@@ -1,6 +1,7 @@
 import groqService from './groq.service';
 import openaiService from './openai.service';
 import ollamaService from './ollama.service';
+import geminiService from './gemini.service';
 import type { TranslationService, TranslationResult } from './types';
 import type { TranslationMode, FormalityLevel } from '@corpo-lingo/shared';
 
@@ -8,6 +9,7 @@ const providers: Record<string, TranslationService> = {
   groq: groqService,
   openai: openaiService,
   ollama: ollamaService,
+  gemini: geminiService,
 };
 
 export function getTranslationService(): TranslationService {
