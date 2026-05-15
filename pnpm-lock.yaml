@@ -169,6 +169,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.4
         version: 4.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@types/dom-speech-recognition':
+        specifier: ^0.0.11
+        version: 0.0.11
       '@types/node':
         specifier: ^24.12.2
         version: 24.12.2
@@ -1981,6 +1984,9 @@ packages:
 
   '@types/cors@2.8.19':
     resolution: {integrity: sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==}
+
+  '@types/dom-speech-recognition@0.0.11':
+    resolution: {integrity: sha512-PyLFPLM9F5D+qEmkNLX/ZC3uiEV/2B/UhZA9uhWkFVOxUyDVj+UBKI2pF1dnhKhliOiIoR1d/QsOZQfOtQPE3A==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -6818,6 +6824,8 @@ snapshots:
   '@types/cors@2.8.19':
     dependencies:
       '@types/node': 25.6.0
+
+  '@types/dom-speech-recognition@0.0.11': {}
 
   '@types/esrecurse@4.3.1': {}
 

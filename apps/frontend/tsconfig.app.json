@@ -8,7 +8,8 @@
     ],
     "module": "esnext",
     "types": [
-      "vite/client"
+      "vite/client",
+      "dom-speech-recognition"
     ],
     "skipLibCheck": true,
     "paths": {
