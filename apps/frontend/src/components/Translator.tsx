@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
     ArrowRight, Copy, Check, Briefcase, FileText, Award,
-    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2, LogIn, X,
+    Sparkles, Moon, Sun, Plus, MessageSquare, LogOut, Trash2, LogIn, X, Mic, MicOff,
 } from "lucide-react";
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useNavigate } from "react-router-dom";
 
 const modes: Array<{ value: TranslationMode; label: string; icon: typeof Briefcase; description: string }> = [
@@ -116,6 +117,10 @@ export default function Translator() {
         await logout();
         handleNew();
     };
+
+    const { isListening, isSupported, startListening, stopListening } = useSpeechRecognition({
+        onResult: (transcript) => setText((prev) => prev ? `${prev} ${transcript}` : transcript),
+    });
 
     return (
         <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -268,15 +273,38 @@ export default function Translator() {
                             <div className="bg-card rounded-xl border border-border shadow-card p-5 flex flex-col gap-5">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Input</h2>
-                                    <span className="text-xs text-muted-foreground">{text.length} chars</span>
+                                    <div className="flex items-center gap-2">
+                                        {!currentId && isSupported && (
+                                            <button
+                                                onClick={isListening ? stopListening : startListening}
+                                                className={cn(
+                                                    "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+                                                    isListening
+                                                        ? "text-destructive bg-destructive/10 hover:bg-destructive/20"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                                                )}
+                                                aria-label={isListening ? "Stop recording" : "Start voice input"}
+                                                title={isListening ? "Stop recording" : "Speak to input text"}
+                                            >
+                                                {isListening
+                                                    ? <MicOff className="w-3.5 h-3.5" />
+                                                    : <Mic className="w-3.5 h-3.5" />
+                                                }
+                                            </button>
+                                        )}
+                                        <span className="text-xs text-muted-foreground">{text.length} chars</span>
+                                    </div>
                                 </div>
 
                                 <textarea
                                     rows={6}
-                                    className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-sans disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className={cn(
+                                        "w-full rounded-lg border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none font-sans disabled:opacity-70 disabled:cursor-not-allowed transition-colors",
+                                        isListening ? "border-destructive/50 ring-2 ring-destructive/20" : "border-input"
+                                    )}
                                     value={text}
                                     onChange={(e) => setText(e.target.value)}
-                                    placeholder="Type or paste your text here…"
+                                    placeholder={isListening ? "Listening…" : "Type or paste your text here…"}
                                     disabled={!!currentId}
                                 />
 
