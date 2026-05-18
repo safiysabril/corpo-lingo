@@ -62,7 +62,7 @@ export async function sendPasswordResetEmail(
   const from = process.env.SMTP_FROM || process.env.SMTP_USER || '"Corpo Lingo" <noreply@corpo-lingo.dev>';
 
   const info = await transporter.sendMail({
-    from: `"Corpo Lingo" <${from}>`,
+    from: `"Resend" <${from}>`,
     to,
     subject: 'Reset your Corpo Lingo password',
     text: [

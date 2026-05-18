@@ -22,6 +22,3 @@ build/
 # Nx
 .nx/cache
 .nx/workspace-data
-
-# AI generated files
-CLAUDE.md
