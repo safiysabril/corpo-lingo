@@ -7,9 +7,12 @@ import nodemailer from 'nodemailer';
  *    Works with any provider. Recommended free option: Resend
  *      SMTP_HOST=smtp.resend.com  SMTP_PORT=465  SMTP_USER=resend  SMTP_PASS=<api-key>
  *
- * 2. Otherwise → auto-create an Ethereal test account (nodemailer built-in).
- *    No sign-up required. The email is NOT actually delivered; a preview URL is
- *    printed to the backend console so you can inspect the message in the browser.
+ * 2. In development (NODE_ENV !== 'production') with no SMTP configured →
+ *    auto-create an Ethereal test account. The email is NOT delivered; a preview
+ *    URL is printed to the backend console.
+ *
+ * 3. In production with no SMTP configured → skip sending and log a warning.
+ *    The reset URL is logged so it can still be used manually during testing.
  */
 
 async function createTransporter() {
@@ -27,7 +30,11 @@ async function createTransporter() {
     });
   }
 
-  // Dev fallback: Ethereal — disposable test inbox, zero config needed
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  // Local dev fallback: Ethereal — disposable test inbox, zero config needed
   const testAccount = await nodemailer.createTestAccount();
   console.log('\n[Email] No SMTP configured — using Ethereal test account');
   console.log(`[Email] Inbox: https://ethereal.email/login`);
@@ -45,6 +52,13 @@ export async function sendPasswordResetEmail(
   resetUrl: string,
 ): Promise<void> {
   const transporter = await createTransporter();
+
+  if (!transporter) {
+    console.warn(`[Email] SMTP not configured — skipping email to ${to}`);
+    console.warn(`[Email] Reset URL: ${resetUrl}`);
+    return;
+  }
+
   const from = process.env.SMTP_FROM || process.env.SMTP_USER || '"Corpo Lingo" <noreply@corpo-lingo.dev>';
 
   const info = await transporter.sendMail({
