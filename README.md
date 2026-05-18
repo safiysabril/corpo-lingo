@@ -636,7 +636,3 @@ Nginx proxies to `http://backend:3000` — a hostname provided by the compose ne
 Restart the backend; the limiter's state is in-memory.
 
 ---
-
-## License
-
-UNLICENSED — private project.
