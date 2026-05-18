@@ -59,7 +59,7 @@ There is no root-level `package.json` script aggregator; always use `--filter`.
 
 **Auth:** JWT stored in an httpOnly cookie named `token`. `authenticate` requires a valid token; `optionalAuthenticate` allows guests. The `AuthenticatedRequest` type extends `Request` with `user: { sub: number; email: string; name: string }`.
 
-**Email (`src/services/email.service.ts`):** nodemailer. If `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` are set, mail is sent via that SMTP server. Otherwise it auto-creates an [Ethereal](https://ethereal.email) test account and prints a preview URL to the console — no configuration needed for local dev.
+**Email (`src/services/email.service.ts`):** Uses Resend HTTP API (`RESEND_API_KEY`) in production — HTTPS only, no SMTP ports needed (works on Railway). Falls back to an [Ethereal](https://ethereal.email) disposable test account in local dev (preview URL printed to console, zero config). In production with no key set, the send is skipped and the reset URL is logged.
 
 **API routes:**
 | Method | Path | Auth |
@@ -115,7 +115,8 @@ Copy `apps/backend/.env.example` to `apps/backend/.env`. Key variables:
 | `OLLAMA_HOST` / `OLLAMA_MODEL` | Ollama endpoint and model |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins |
 | `APP_URL` | Base URL used in password-reset links (default: `http://localhost:5173`) |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | SMTP credentials for password-reset emails (all optional — omit to use Ethereal in dev) |
+| `RESEND_API_KEY` | Resend HTTP API key for password-reset emails — uses HTTPS, works on Railway |
+| `EMAIL_FROM` | From address for password-reset emails (e.g. `Corpo Lingo <noreply@yourdomain.com>`) |
 
 ## Database Schema
 
