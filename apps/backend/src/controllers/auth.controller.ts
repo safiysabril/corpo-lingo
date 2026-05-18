@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../db';
 import type { RegisterPayload, LoginPayload, UserProfile } from '@corpo-lingo/shared';
 import type { AuthenticatedRequest } from '../middleware/authenticate';
+import { sendPasswordResetEmail } from '../services/email.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const COOKIE_NAME = 'token';
@@ -73,4 +75,66 @@ export function logout(_req: Request, res: Response): void {
 export function me(req: Request, res: Response): void {
   const { sub, email, name } = (req as AuthenticatedRequest).user;
   res.json({ success: true, user: { id: sub, email, name } });
+}
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as { email: string };
+
+  const result = await pool.query('SELECT id, name FROM users WHERE email = $1', [email]);
+  const user = result.rows[0] as { id: number; name: string } | undefined;
+
+  // Always respond 200 — prevents email enumeration attacks
+  if (!user) {
+    res.json({ success: true });
+    return;
+  }
+
+  // Invalidate any previous unused tokens for this user
+  await pool.query(
+    'DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL',
+    [user.id],
+  );
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+  await pool.query(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+    [user.id, tokenHash, expiresAt],
+  );
+
+  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+  const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+
+  await sendPasswordResetEmail(email, user.name, resetUrl);
+
+  res.json({ success: true });
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { token, password } = req.body as { token: string; password: string };
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  const result = await pool.query(
+    `SELECT id, user_id FROM password_reset_tokens
+     WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+    [tokenHash],
+  );
+  const row = result.rows[0] as { id: number; user_id: number } | undefined;
+
+  if (!row) {
+    res.status(400).json({ success: false, error: 'This reset link is invalid or has expired.' });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(password, 12);
+
+  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, row.user_id]);
+  await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [row.id]);
+
+  res.json({ success: true });
 }

@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight, Briefcase } from "lucide-react";
@@ -128,9 +128,19 @@ export default function Auth() {
                             />
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                                    Password
+                                </label>
+                                {isLogin && (
+                                    <Link
+                                        to="/forgot-password"
+                                        className="text-xs font-medium text-primary hover:underline transition-all"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                )}
+                            </div>
                             <input
                                 name="password"
                                 type="password"

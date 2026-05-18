@@ -4,6 +4,8 @@ import type {
   AuthResponse,
   UserProfile,
   TranslationHistoryItem,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
 } from '@corpo-lingo/shared';
 
 const BASE = '/api/v1/auth';
@@ -49,4 +51,20 @@ export async function getHistory(): Promise<TranslationHistoryItem[]> {
 
 export async function deleteHistoryItem(id: string): Promise<void> {
   await request(`/api/v1/translate/history/${id}`, { method: 'DELETE' });
+}
+
+export async function forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+  await request(`${BASE}/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function resetPassword(payload: ResetPasswordPayload): Promise<void> {
+  await request(`${BASE}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }

@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import { body, validationResult } from 'express-validator';
 import type { Request, Response, NextFunction } from 'express';
-import { register, login, logout, me } from '../controllers/auth.controller';
+import { register, login, logout, me, forgotPassword, resetPassword } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/authenticate';
 
 const router: ExpressRouter = Router();
@@ -42,5 +42,22 @@ router.post(
 
 router.post('/logout', logout);
 router.get('/me', authenticate, me);
+
+router.post(
+  '/forgot-password',
+  [body('email').isEmail().normalizeEmail().withMessage('Valid email is required.')],
+  validate,
+  forgotPassword,
+);
+
+router.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().withMessage('Reset token is required.'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
+  ],
+  validate,
+  resetPassword,
+);
 
 export default router;

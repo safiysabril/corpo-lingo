@@ -23,6 +23,15 @@ export interface AuthResponse {
   error?: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
 export interface TranslationHistoryItem {
   id: string;
   input: string;
