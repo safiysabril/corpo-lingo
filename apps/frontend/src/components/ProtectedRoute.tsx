@@ -16,7 +16,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  if (isError || !data) {
+  // Only redirect when we positively know the user is not authenticated (data === null).
+  // Do not redirect on network errors or rate-limit responses — that would appear as a logout.
+  if (!isLoading && !isError && !data) {
     return <Navigate to="/" replace />;
   }
 

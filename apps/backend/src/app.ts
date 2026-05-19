@@ -1,9 +1,10 @@
-import express, { type Express } from 'express';
+import express, { type Express, type Request } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 import translateRoutes from './routes/translate.routes';
 import authRoutes from './routes/auth.routes';
@@ -27,10 +28,26 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
+function getAuthUserId(req: Request): number | null {
+  const token = (req as any).cookies?.token;
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-production') as unknown as { sub: number };
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// 100 requests/day for authenticated users, 10/day for guests
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, error: 'Too many requests, please try again after 15 minutes.' },
+  windowMs: 24 * 60 * 60 * 1000,
+  limit: (req) => (getAuthUserId(req) !== null ? 100 : 10),
+  keyGenerator: (req) => {
+    const userId = getAuthUserId(req);
+    return userId !== null ? `user:${userId}` : `guest:${req.ip}`;
+  },
+  message: { success: false, error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
