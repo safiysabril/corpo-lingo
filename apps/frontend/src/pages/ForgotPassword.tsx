@@ -29,12 +29,12 @@ export default function ForgotPassword() {
             {/* Left Side - Brand */}
             <div className="hidden lg:flex flex-col justify-between p-12 border-r border-border bg-card/30 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-                <div className="relative z-10 flex items-center gap-2.5">
+                <Link to="/" className="relative z-10 flex items-center gap-2.5">
                     <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                         <Sparkles className="w-6 h-6 text-primary-foreground" />
                     </div>
                     <span className="text-xl font-bold tracking-tight text-foreground">Corpo Lingo</span>
-                </div>
+                </Link>
                 <div className="relative z-10 max-w-md">
                     <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-4 leading-tight">
                         Forgot your password?{" "}
@@ -54,12 +54,12 @@ export default function ForgotPassword() {
             <div className="flex items-center justify-center p-6 sm:p-12 relative z-10">
                 <div className="w-full max-w-[400px] flex flex-col gap-6">
                     {/* Mobile Logo */}
-                    <div className="flex lg:hidden items-center gap-2.5 mb-2 justify-center">
+                    <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-2 justify-center">
                         <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                             <Sparkles className="w-6 h-6 text-primary-foreground" />
                         </div>
                         <span className="text-xl font-bold tracking-tight text-foreground">Corpo Lingo</span>
-                    </div>
+                    </Link>
 
                     {submitted ? (
                         <div className="flex flex-col gap-4 text-center">

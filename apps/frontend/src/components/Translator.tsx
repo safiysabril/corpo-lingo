@@ -11,7 +11,7 @@ import {
 import { TRANSLATION_MODES, FORMALITY_LEVELS, type TranslationMode, type FormalityLevel } from "@corpo-lingo/shared";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const modes: Array<{ value: TranslationMode; label: string; icon: typeof Briefcase; description: string }> = [
     { value: TRANSLATION_MODES.EMAIL, label: "Email", icon: Briefcase, description: "Professional emails" },
@@ -127,12 +127,12 @@ export default function Translator() {
             {/* Header */}
             <header className="w-full border-b border-border/60 bg-card/80 backdrop-blur-md shrink-0 z-10">
                 <div className="px-4 sm:px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
+                    <Link to="/" className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-primary-foreground" />
                         </div>
                         <span className="text-lg font-bold tracking-tight text-foreground">Corpo Lingo</span>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-3">
                         {authUser && (
                             <span className="hidden sm:block text-xs text-muted-foreground">
