@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 
 import translateRoutes from './routes/translate.routes';
@@ -45,7 +45,9 @@ const limiter = rateLimit({
   limit: (req) => (getAuthUserId(req) !== null ? 100 : 10),
   keyGenerator: (req) => {
     const userId = getAuthUserId(req);
-    return userId !== null ? `user:${userId}` : `guest:${req.ip}`;
+    // ipKeyGenerator normalises IPv6 addresses to a subnet so guests can't
+    // bypass the limit by hopping addresses (required by express-rate-limit v8).
+    return userId !== null ? `user:${userId}` : `guest:${ipKeyGenerator(req.ip ?? '')}`;
   },
   message: { success: false, error: 'Too many requests, please try again later.' },
   standardHeaders: true,

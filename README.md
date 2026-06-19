@@ -1,411 +1,179 @@
 # Corpo Lingo
 
-A full-stack web app that rewrites casual text into professional corporate language. Choose a **mode** (email / documentation / formal) and a **formality level** (low / medium / high). An LLM rewrites your text accordingly. Supports authentication, translation history, and multiple AI backends.
+Turn casual text into polished corporate language. Paste what you actually mean,
+pick a **mode** (email / documentation / formal) and a **formality level**
+(low / medium / high), and an LLM rewrites it professionally — buzzword-free.
+
+Guests can translate freely; signing in adds saved history. Also includes voice
+input, dark mode, and password reset.
 
 **Authors:** Zana & Safiy
 
 ---
 
-## Table of Contents
+## Contents
 
-- [Stack at a Glance](#stack-at-a-glance)
-- [Repository Layout](#repository-layout)
-- [Prerequisites](#prerequisites)
-- [Quick Start — Local Development](#quick-start--local-development)
-- [Quick Start — Docker](#quick-start--docker)
-- [Environment Variables](#environment-variables)
-- [API Reference](#api-reference)
-- [AI Providers](#ai-providers)
-- [Translation Modes & Formality](#translation-modes--formality)
-- [Scripts Reference](#scripts-reference)
-- [Architecture Notes](#architecture-notes)
-- [Extending the System](#extending-the-system)
-- [Testing](#testing)
-- [Production Build & Deployment](#production-build--deployment)
-- [Security](#security)
+- [Stack](#stack)
+- [Quick start](#quick-start)
+- [Project layout](#project-layout)
+- [Documentation](#documentation)
+- [Common commands](#common-commands)
+- [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-## Stack at a Glance
+## Stack
 
-| Layer       | Technology                                                                |
-| ----------- | ------------------------------------------------------------------------- |
-| Monorepo    | pnpm workspaces + Nx                                                      |
-| Frontend    | React 19, Vite 8, TypeScript, Tailwind CSS 4, Radix UI / shadcn-ui        |
-| Backend     | Node 22, Express 5, TypeScript (CommonJS output)                          |
-| Database    | PostgreSQL 16 — users & translation history                               |
-| Auth        | JWT (httpOnly cookie, 7-day expiry) + bcryptjs password hashing           |
-| Shared      | TypeScript types & constants consumed by both sides                       |
-| AI          | Pluggable: Groq SDK (default) · OpenAI · Ollama (local)                   |
-| Infra       | Docker (multi-stage) + Nginx + docker-compose                             |
-| Testing     | Jest + Supertest (backend)                                                |
+| Layer | Tech |
+|-------|------|
+| Monorepo | pnpm workspaces + Nx |
+| Frontend | React 19, Vite 8, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query, React Router 7 |
+| Backend | Node 22, Express 5, TypeScript |
+| Database | PostgreSQL 16 (users + translation history) |
+| Cache | Redis 7 (optional — caches translations, 30-day TTL) |
+| Auth | JWT in an httpOnly cookie + bcryptjs |
+| AI | Pluggable: **Groq** (default) · OpenAI · Google Gemini · Ollama (local) |
+| Email | Resend HTTP API (prod) / Ethereal (dev) for password reset |
+| Infra | Docker multi-stage builds + Nginx + Docker Compose |
+| Tests | Jest + Supertest (backend) |
 
 ---
 
-## Repository Layout
+## Quick start
+
+### Prerequisites
+
+- Node.js 22+ and pnpm 9+ (`corepack enable && corepack prepare pnpm@9 --activate`)
+- Docker (for the database, or bring your own Postgres)
+- An AI provider key — [Groq](https://console.groq.com) has a generous free tier
+
+### 1. Install & configure
+
+```bash
+pnpm install
+cp apps/backend/.env.example apps/backend/.env
+# edit apps/backend/.env → set your AI key (e.g. GROQ_API_KEY) and a JWT_SECRET
+```
+
+### 2. Run it
+
+**Option A — local dev with hot reload (recommended while coding):**
+
+```bash
+docker compose -f docker-compose.dev.yml up -d   # start Postgres + Redis only
+pnpm dev                                          # run backend + frontend on the host
+```
+
+> `pnpm dev` runs the apps directly and **needs a database** — that's what the dev
+> Compose file provides. Its default credentials match the `DATABASE_URL` shipped in
+> `.env.example`. (Full explanation, plus the "I already run Postgres on 5432" case,
+> in [docs/local-development.md](docs/local-development.md).)
+
+**Option B — full stack in Docker (no Node needed on the host):**
+
+```bash
+docker compose up --build
+```
+
+| | Local dev (A) | Docker (B) |
+|---|---|---|
+| Frontend | http://localhost:5173 | http://localhost (port 80) |
+| Backend | http://localhost:3000 | http://localhost:3000 |
+| Health | http://localhost:3000/health | same |
+
+> If `docker` needs `sudo` on your machine, prefix the Compose commands with `sudo`
+> (or add yourself to the `docker` group).
+
+---
+
+## Project layout
 
 ```
 corpo-lingo/
 ├── apps/
-│   ├── backend/     # Express API server
-│   │   ├── src/
-│   │   │   ├── app.ts
-│   │   │   ├── server.ts
-│   │   │   ├── db/
-│   │   │   ├── controllers/
-│   │   │   ├── routes/
-│   │   │   ├── middleware/
-│   │   │   ├── services/
-│   │   │   └── utils/
-│   │   ├── tests/
-│   │   ├── Dockerfile
-│   │   └── tsconfig.json
-│   └── frontend/    # React + Vite SPA
-│       ├── src/
-│       │   ├── main.tsx
-│       │   ├── App.tsx
-│       │   ├── pages/
-│       │   ├── components/
-│       │   ├── hooks/
-│       │   └── api/
-│       ├── index.html
-│       ├── vite.config.ts
-│       ├── Dockerfile
-│       └── tsconfig.json
+│   ├── backend/     Express 5 REST API  (@corpo-lingo/backend)
+│   └── frontend/    React + Vite SPA    (@corpo-lingo/frontend)
 ├── packages/
-│   └── shared/      # @corpo-lingo/shared — universal types & constants
-│       ├── src/
-│       │   ├── types.ts
-│       │   ├── auth.ts
-│       │   ├── constants.ts
-│       │   └── index.ts
-│       └── tsconfig.json
-├── docker-compose.yml
-├── pnpm-workspace.yaml
+│   └── shared/      Shared types & constants (@corpo-lingo/shared)
+├── docs/            Reference documentation (start at docs/README.md)
+├── docker-compose.yml       Full stack
+├── docker-compose.dev.yml   Postgres + Redis only, for `pnpm dev`
 ├── nx.json
 └── package.json
 ```
 
 ---
 
-## Prerequisites
+## Documentation
 
-- **Node.js 22+** (LTS recommended)
-- **pnpm 9+** — `corepack enable && corepack prepare pnpm@9 --activate`
-- **PostgreSQL 16+** (local dev), or use Docker containers
-- **Docker** (optional; runs DB/backend/frontend via Compose)
-- **AI provider API key** (Groq recommended — generous free tier)
+In-depth docs live in [`docs/`](docs/README.md):
+
+| Doc | What's inside |
+|-----|---------------|
+| [architecture.md](docs/architecture.md) | System design + the translate request lifecycle |
+| [local-development.md](docs/local-development.md) | Running locally, the DB requirement, troubleshooting |
+| [backend.md](docs/backend.md) / [frontend.md](docs/frontend.md) | Per-app internals |
+| [api-reference.md](docs/api-reference.md) | Every endpoint with request/response shapes |
+| [database.md](docs/database.md) | Schema and tables |
+| [ai-providers.md](docs/ai-providers.md) | Provider system, prompts, adding a provider |
+| [deployment.md](docs/deployment.md) | Docker images, CI/CD, environment variables |
+
+`CLAUDE.md` is a condensed map of the same material for AI coding assistants.
 
 ---
 
-## Quick Start — Local Development
+## Common commands
 
 ```bash
-# 1. Clone & install
-git clone <repo-url>
-cd corpo-lingo
-pnpm install
+pnpm dev                                       # build shared once, run all apps (needs a DB)
+pnpm build                                     # nx run-many -t build
+pnpm test                                      # nx run-many -t test
+pnpm lint                                      # nx run-many -t lint
 
-# 2. Configure backend
-cp apps/backend/.env.example apps/backend/.env
-#  — Fill in: DATABASE_URL, JWT_SECRET, your AI provider key
-
-# 3. Run everything
-pnpm dev
+pnpm --filter @corpo-lingo/backend dev         # backend only (tsx watch)
+pnpm --filter @corpo-lingo/frontend dev        # frontend only (vite)
+pnpm --filter @corpo-lingo/shared build        # REQUIRED after editing packages/shared
+pnpm --filter @corpo-lingo/backend test        # jest + supertest
 ```
 
-- `pnpm dev` does a one-off build of `@corpo-lingo/shared`, then concurrently starts frontend & backend.
-- Backend auto-creates tables for users & translations on first start (`initDb`).
-- Frontend dev server proxies `/api/*` to backend for local smoothness.
-
-Frontend: http://localhost:5173  
-Backend:  http://localhost:3000  
-Health:   http://localhost:3000/health
-
-*If you change `packages/shared`, re-run its build with `pnpm --filter @corpo-lingo/shared build`.*
+> Editing `packages/shared`? Rebuild it or the apps won't see the new types
+> (`pnpm dev` does this once on startup).
 
 ---
 
-## Quick Start — Docker
-
-Three services: Postgres, backend (Node 22), frontend (Nginx-served static SPA). Managed with `docker-compose.yml`.
-
-```bash
-docker compose up --build
-# or
-docker compose up -d --build
-```
-
-| Service  | Container | Host  |
-|----------|-----------|-------|
-| postgres | 5432      | —     |
-| backend  | 3000      | 3000  |
-| frontend | 80        | 80    |
-
-- DB is accessible only inside the compose network.
-- Nginx proxies `/api/*` to backend.
-
-To clear your dev database data:
-
-```bash
-docker compose down -v
-```
-
----
-
-## Environment Variables
-
-Defined in `apps/backend/.env` (see `.env.example`).
-
-| Variable          | Required                | Default                          | Desc                                           |
-|-------------------|------------------------|-----------------------------------|------------------------------------------------|
-| DATABASE_URL      | yes                    | —                                 | PostgreSQL connection string                   |
-| JWT_SECRET        | yes (prod)             | dev-secret-change-in-production   | For JWT tokens; **change in prod**             |
-| PORT              | no                     | 3000                              | Express server port                            |
-| NODE_ENV          | no                     | development                       | Shows error stacks when 'development'          |
-| AI_PROVIDER       | no                     | openai                            | 'groq', 'openai', or 'ollama'                  |
-| ALLOWED_ORIGINS   | no                     | http://localhost:5173             | CORS allowlist                                 |
-| GROQ_API_KEY      | if groq                | —                                 | Groq Cloud API key                             |
-| GROQ_MODEL        | no                     | llama-3.3-70b-versatile           | Groq model override                            |
-| OPENAI_API_KEY    | if openai              | —                                 | OpenAI API key                                 |
-| OPENAI_MODEL      | no                     | gpt-4o-mini                       | OpenAI model override                          |
-| OLLAMA_HOST       | no                     | http://localhost:11434            | Ollama server base URL                         |
-| OLLAMA_MODEL      | no                     | llama3                            | Ollama model tag                               |
-
-- The frontend needs no env vars for dev/prod.
-- Rate limit: 100 requests/15min/IP (see `apps/backend/src/app.ts`).
-
----
-
-## API Reference
-
-Base path: `/api/v1`
-
-**Liveness:** `GET /health`  
-Returns health, timestamp, and API version.
-
-### Auth routes (`/api/v1/auth`)
-- `POST /register`: `{name, email, password}` → set `token` cookie
-- `POST /login`: `{email, password}` → set `token` cookie
-- `POST /logout`: clears `token` cookie
-- `GET /me`: Returns current user (requires cookie auth)
-
-### Translate routes (`/api/v1/translate`)
-- `GET /options`: Valid values for `mode` & `formality`
-- `POST /`: `{text, mode, formality}` → translation (guest or logged-in); logged-in users' queries saved to history
-- `GET /history`: Last 50 translations for current user
-- `DELETE /history/:id`: Delete translation by id (owned by user)
-
-**For detailed request/response shapes:** see the [full API section above or Swagger (if available)]. Most types and validation rules are enforced server-side and shared via `@corpo-lingo/shared`.
-
----
-
-## AI Providers
-
-**Pluggable AI provider via `AI_PROVIDER` env.**  
-- `groq` (default; fastest)
-- `openai`
-- `ollama` (local LLM)
-
-Switch providers by updating `.env`. Each implements the `TranslationService` interface:
-
-```ts
-translateText(
-  text: string,
-  mode: TranslationMode,
-  formality: FormalityLevel
-): Promise<TranslationResult>
-```
-
-Backend resolves provider per-request using [`apps/backend/src/services/ai.factory.ts`](apps/backend/src/services/ai.factory.ts).
-
----
-
-## Translation Modes & Formality
-
-Source of truth: [`packages/shared/src/constants.ts`](packages/shared/src/constants.ts)
-
-### Modes
-
-| Value           | Description                                                  |
-|-----------------|-------------------------------------------------------------|
-| `email`         | Business email (greeting, sign-off, subject)                |
-| `documentation` | Instructional/technical writing                             |
-| `formal`        | Memos, presentations, or highly polished correspondence     |
-
-### Formality
-
-| Value    | Description                                  |
-|----------|----------------------------------------------|
-| `low`    | Light copy-edit, minimal changes             |
-| `medium` | Clearly professional, smooth tone            |
-| `high`   | Highly formal; no slang, very refined wording|
-
----
-
-## Scripts Reference
-
-### Root (`package.json`)
-
-| Command       | Description                                                        |
-|---------------|--------------------------------------------------------------------|
-| `pnpm dev`    | Build shared, run backend & frontend dev servers                   |
-| `pnpm nx-dev` | Same, but via Nx                                                   |
-| `pnpm build`  | Nx build all (shared, backend, frontend)                           |
-| `pnpm test`   | Nx run all test suites                                             |
-| `pnpm lint`   | Nx lint all codebases                                              |
-
-### Backend (`apps/backend/package.json`)
-
-| Command      | Description                                    |
-|--------------|------------------------------------------------|
-| `pnpm dev`   | Hot-reload backend via tsx                     |
-| `pnpm build` | Compile backend                                |
-| `pnpm start` | Run production backend                         |
-| `pnpm test`  | Jest tests                                     |
-
-### Frontend (`apps/frontend/package.json`)
-
-| Command        | Description                                   |
-|----------------|-----------------------------------------------|
-| `pnpm dev`     | Vite dev server (+HMR)                        |
-| `pnpm build`   | TypeScript + Vite build (assets in `dist/`)   |
-| `pnpm preview` | Preview Vite build locally                    |
-| `pnpm lint`    | ESLint checks                                 |
-
-### Shared (`packages/shared/package.json`)
-
-| Command      | Description                                 |
-|--------------|---------------------------------------------|
-| `pnpm build` | TypeScript build (types/constants)           |
-| `pnpm dev`   | TSC watch for hot type updates               |
-
----
-
-## Architecture Notes
-
-### Database schema
-
-Auto-created by `initDb()` if not present:
-
-```sql
-users (
-  id            SERIAL PRIMARY KEY,
-  name          TEXT NOT NULL,
-  email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)
-
-translations (
-  id         TEXT PRIMARY KEY,      -- UUID
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  input      TEXT NOT NULL,
-  output     TEXT NOT NULL,
-  mode       TEXT NOT NULL,
-  formality  TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)
-```
-
-Index: `(user_id, created_at DESC)` for fast history.
-
-### Auth flow
-
-1. Register or login — validator, bcrypt hash, JWT (7 days) set as `httpOnly` cookie.
-2. Every request includes cookie; backend validates JWT.
-3. `optionalAuthenticate` applied on POST `/translate` for guest/non-guest support.
-4. Logout clears the cookie.
-
-### Shared package usage
-
-Frontend & backend share types and constants (esp. enums for mode/formality) for single-source-of-truth API and UI validation.
-
----
-
-## Extending the System
-
-**Add an AI provider:**  
-1. Add a file in `apps/backend/src/services/` implementing `TranslationService`
-2. Register it in `ai.factory.ts`
-3. Set `AI_PROVIDER` in backend env
-
-**Add translation mode or formality:**  
-1. Add in `packages/shared/src/constants.ts`
-2. Adjust descriptions and prompt rules as needed
-3. Rebuild shared package
-
----
-
-## Testing
-
-**Backend:**  
-```bash
-pnpm --filter @corpo-lingo/backend test
-# For coverage:
-pnpm --filter @corpo-lingo/backend test -- --coverage
-```
-
-- All LLM calls are mocked.  
-- No frontend tests yet; run `pnpm lint` for code sanity.
-
----
-
-## Production Build & Deployment
-
-Build artifacts (`dist/`) for backend & frontend with:
-
-```bash
-pnpm build
-```
-
-**Docker deployment:**  
-`docker compose up -d --build` (runs all services)  
-Both backend & frontend Dockerfiles are multi-stage, prune dev dependencies, and patch Alpine OS on build. Backend image runs as non-root.
-
-Put a reverse proxy (Caddy/Traefik etc.) in front of port 80 for HTTPS.
-
----
-
-## Security
-
-| Concern             | Approach                                                               |
-|---------------------|-----------------------------------------------------------------------|
-| HTTP headers        | `helmet()` everywhere                                                 |
-| CORS                | Allowlist via `ALLOWED_ORIGINS` env                                   |
-| Rate limiting       | `express-rate-limit` middleware                                       |
-| Body size           | `express.json({ limit: '10kb' })`                                     |
-| Input validation    | `express-validator` enforces types/enums/ranges                       |
-| Auth tokens         | JWT in httpOnly & SameSite=lax cookies only                           |
-| Password storage    | bcryptjs, cost=12                                                     |
-| Error sanitization  | Stacks shown only in non-production                                   |
-| Container hardening | Backend production container runs non-root; aggressive dependency pruning|
-| Secrets             | Never checked in; `.env` is gitignored                                |
+## Configuration
+
+All config is in `apps/backend/.env` (see `.env.example`). The frontend needs none.
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `DATABASE_URL` | **yes** | PostgreSQL connection string |
+| `JWT_SECRET` | yes (prod) | Signs auth JWTs |
+| `REDIS_URL` | no | Enables translation caching |
+| `AI_PROVIDER` | no | `groq` (default) · `openai` · `gemini` · `ollama` |
+| `FALLBACK_PROVIDER` | no | Provider to try on a rate-limit (429) |
+| `GROQ_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `OLLAMA_HOST` | per provider | Provider credentials |
+| `ALLOWED_ORIGINS` | no | Comma-separated CORS allowlist |
+| `APP_URL` | no | Base URL in password-reset links |
+| `RESEND_API_KEY` / `EMAIL_FROM` | no | Password-reset email delivery |
+
+Full table and a production checklist: [docs/deployment.md](docs/deployment.md).
+
+**Rate limits:** 100 requests/day for signed-in users, 10/day for guests, per
+`/api/` route.
 
 ---
 
 ## Troubleshooting
 
-**`Cannot find module '@corpo-lingo/shared'`**  
-Rebuild shared: `pnpm --filter @corpo-lingo/shared build`
+| Symptom | Fix |
+|---------|-----|
+| `pnpm dev`: `client password must be a string` | `DATABASE_URL` unset — it's in `.env.example`; make sure your `.env` has it. |
+| `pnpm dev`: `DB connection attempt N/12 failed` | No reachable Postgres. Start `docker compose -f docker-compose.dev.yml up -d` first. |
+| `password authentication failed for user "corpo"` | A different Postgres is on 5432. See [docs/local-development.md](docs/local-development.md). |
+| `[cache] Redis error` (repeating) | No Redis — start the dev infra, or comment out `REDIS_URL` (caching just gets skipped). |
+| `Cannot find module '@corpo-lingo/shared'` | `pnpm --filter @corpo-lingo/shared build` |
+| `Translation service is not configured` (503) | Set your provider's API key in `.env`. |
 
-**`DB connection attempt N/12 failed`**  
-Confirm `DATABASE_URL` and Postgres connectivity.
-
-**`Translation service is not configured` (503)**  
-Check provider key(s) in backend env.
-
-**Port already in use**  
-Run `lsof -i :3000` and `kill -9 <PID>` if necessary — or change `PORT`.
-
-**Frontend CORS or proxy issues**  
-Always use relative `/api/v1/...` endpoints; do not call backend directly on port 3000 from browser (dev proxy is configured).
-
-**Docker networking**  
-Frontend and backend containers talk directly over Docker network, not localhost.
-
-**Rate-limited during testing**  
-Restart backend; limiter is in-memory.
-
----
+More in [docs/local-development.md](docs/local-development.md#troubleshooting).

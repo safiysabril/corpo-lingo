@@ -1,133 +1,183 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Overview
 
-Corpo Lingo is a corporate language translator. Casual text is rewritten into professional corporate language using an LLM. It is a pnpm monorepo with three packages:
+**Corpo Lingo** is a corporate language translator: casual text is rewritten into
+professional corporate language by an LLM. The user picks a **mode**
+(`email` | `documentation` | `formal`) and a **formality level**
+(`low` | `medium` | `high`).
+
+pnpm + **Nx** monorepo, three packages:
 
 - `apps/backend` — Express 5 + TypeScript REST API
 - `apps/frontend` — React 19 + Vite SPA
-- `packages/shared` — Shared TypeScript types and constants consumed by both apps
+- `packages/shared` — Shared TypeScript types & constants consumed by both apps
+
+## Deeper docs (read these for detail)
+
+`docs/` holds focused reference docs — prefer them over re-deriving from source:
+
+- [docs/architecture.md](docs/architecture.md) — system design + request lifecycle
+- [docs/local-development.md](docs/local-development.md) — running locally + **why `pnpm dev` needs a DB**
+- [docs/backend.md](docs/backend.md) · [docs/frontend.md](docs/frontend.md) — per-app internals
+- [docs/api-reference.md](docs/api-reference.md) — every endpoint
+- [docs/database.md](docs/database.md) — schema (no migration tool; `initDb()` only)
+- [docs/ai-providers.md](docs/ai-providers.md) — provider system + prompts
+- [docs/deployment.md](docs/deployment.md) — Docker, CI, env vars
 
 ## Commands
 
-All commands are run from the repo root using pnpm filter syntax.
+Most commands use pnpm filter syntax. Build/test/lint are orchestrated by Nx.
 
 ```bash
-# Development
-pnpm --filter @corpo-lingo/backend dev       # Backend with hot reload (tsx watch)
-pnpm --filter @corpo-lingo/frontend dev      # Frontend with HMR (Vite)
+# Run everything locally (needs a database — see below)
+pnpm dev                                       # builds shared once, then runs all apps' dev in parallel
 
-# Build
-pnpm --filter @corpo-lingo/shared build      # Must run after editing packages/shared
-pnpm --filter @corpo-lingo/backend build     # tsc compile to dist/
-pnpm --filter @corpo-lingo/frontend build    # tsc + vite build
+# Per-package dev
+pnpm --filter @corpo-lingo/backend dev         # tsx watch
+pnpm --filter @corpo-lingo/frontend dev        # vite HMR
 
-# Tests (backend only — jest + supertest, runs in-band)
+# Build (Nx caches these)
+pnpm --filter @corpo-lingo/shared build        # REQUIRED after editing packages/shared
+pnpm build                                     # nx run-many -t build (all packages)
+
+# Test (backend only — jest + supertest, in-band)
 pnpm --filter @corpo-lingo/backend test
-pnpm --filter @corpo-lingo/backend test -- --testPathPattern=auth   # single file
+pnpm --filter @corpo-lingo/backend test -- --testPathPattern=translate
 
 # Lint (frontend only)
 pnpm --filter @corpo-lingo/frontend lint
 
-# Docker (full stack: postgres + redis + backend + frontend)
-docker compose up --build
+# Nx variants
+pnpm nx-dev    # nx run-many -t dev
+pnpm test      # nx run-many -t test
+pnpm lint      # nx run-many -t lint
 ```
 
-There is no root-level `package.json` script aggregator; always use `--filter`.
+**Important:** any change to `packages/shared` requires rebuilding it before the
+backend/frontend see the new types. `pnpm dev` does this build once on startup.
 
-**Important:** Any change to `packages/shared` requires running its build before the backend or frontend will pick up the new types.
+## Running locally — `pnpm dev` needs a database
 
-## Backend Architecture
+`docker compose up` works out of the box because it starts Postgres + Redis
+containers and injects `DATABASE_URL`/`REDIS_URL`. **`pnpm dev` does not start a
+database** — the backend's `initDb()` blocks startup until Postgres is reachable, so
+without one it fails (`client password must be a string` if `DATABASE_URL` is unset,
+or `DB connection attempt N/12 failed`).
 
-**Entry point:** `apps/backend/src/server.ts` — loads env, initialises DB, starts Express.
+To run `pnpm dev`:
 
-**Request flow for `POST /api/v1/translate`:**
-1. `optionalAuthenticate` middleware — attaches `req.user` from JWT cookie if present (guests allowed)
-2. `validateTranslation` middleware — validates `text`, `mode`, `formality` via express-validator
-3. `translate` controller — checks Redis cache → on miss calls `translateWithFallback` → stores result in Redis → if authenticated, persists row to `translations` table
+```bash
+docker compose -f docker-compose.dev.yml up -d   # postgres + redis with host ports
+pnpm dev
+```
 
-**AI provider system (`src/services/`):**
-- All providers implement the `TranslationService` interface: `translateText(text, mode, formality): Promise<TranslationResult>`
-- `ai.factory.ts` selects the provider via `AI_PROVIDER` env var and routes to `groq.service.ts`, `openai.service.ts`, `gemini.service.ts`, or `ollama.service.ts`
-- `translateWithFallback` retries with `FALLBACK_PROVIDER` only on HTTP 429 / rate-limit errors
+The default `DATABASE_URL` in `.env.example`
+(`postgresql://corpo:corpo@localhost:5432/corpo_lingo`) matches this dev infra. If a
+**native Postgres** already owns port 5432, see
+[docs/local-development.md](docs/local-development.md) (use it directly, or remap to
+5433). Redis is optional — without it, caching is skipped (and `[cache] Redis error`
+is logged but harmless). Note: this user runs Docker via `sudo` (not in the `docker`
+group).
 
-**Caching (`src/utils/cache.ts`):** Redis via `ioredis`. Cache key is SHA-256 of `text|mode|formality`. TTL = 30 days. Redis is optional — if `REDIS_URL` is unset, caching is silently skipped.
+## Backend architecture
 
-**Database (`src/db/index.ts`):** PostgreSQL via `pg`. Tables are created at startup (`initDb`). Retries up to 12 times with 5 s delay — important for Docker startup ordering.
+**Entry:** `apps/backend/src/server.ts` (env → `initDb()` → `app.listen`). The
+Express app is built separately in `src/app.ts` and exported without listening (so
+Supertest can import it).
 
-**Auth:** JWT stored in an httpOnly cookie named `token`. `authenticate` requires a valid token; `optionalAuthenticate` allows guests. The `AuthenticatedRequest` type extends `Request` with `user: { sub: number; email: string; name: string }`.
+**`POST /api/v1/translate` flow:** `optionalAuthenticate` (attach `req.user` from JWT
+cookie; guests allowed) → `validateTranslation` (express-validator) → `translate`
+controller: Redis cache lookup → on miss `translateWithFallback` → cache store → if
+authenticated, persist a row to `translations`.
 
-**Email (`src/services/email.service.ts`):** Uses Resend HTTP API (`RESEND_API_KEY`) in production — HTTPS only, no SMTP ports needed (works on Railway). Falls back to an [Ethereal](https://ethereal.email) disposable test account in local dev (preview URL printed to console, zero config). In production with no key set, the send is skipped and the reset URL is logged.
+**AI providers (`src/services/`):** all implement `TranslationService`
+(`translateText(text, mode, formality)`). `ai.factory.ts` selects by `AI_PROVIDER`
+and routes to `groq` / `openai` / `gemini` / `ollama`. `translateWithFallback`
+retries with `FALLBACK_PROVIDER` only on HTTP 429 / rate-limit errors.
+
+**Caching (`src/utils/cache.ts`):** Redis (`ioredis`); key = `SHA-256(text|mode|formality)`,
+TTL 30 days. Optional — skipped if `REDIS_URL` unset.
+
+**Database (`src/db/index.ts`):** Postgres (`pg`). Tables created at startup by
+`initDb()` (retries 12× / 5s — important for Docker ordering). No migration tool.
+
+**Auth:** JWT in an httpOnly cookie `token`. `authenticate` requires it;
+`optionalAuthenticate` allows guests. `AuthenticatedRequest.user = { sub, email, name }`.
+
+**Rate limit:** all `/api/` routes — **100 req/day** authenticated, **10 req/day**
+guests (`express-rate-limit`, in-memory). The guest key uses `ipKeyGenerator(req.ip)`
+— do **not** revert to raw `req.ip` (throws `ERR_ERL_KEY_GEN_IPV6` in v8).
+
+**Email (`src/services/email.service.ts`):** Resend HTTP API in production
+(`RESEND_API_KEY`); Ethereal test inbox in local dev (preview URL logged); skipped +
+logged if neither.
 
 **API routes:**
+
 | Method | Path | Auth |
 |--------|------|------|
 | GET | `/health` | none |
-| POST | `/api/v1/auth/register` | none |
-| POST | `/api/v1/auth/login` | none |
-| POST | `/api/v1/auth/logout` | none |
+| POST | `/api/v1/auth/register` · `login` · `logout` | none |
 | GET | `/api/v1/auth/me` | required |
-| POST | `/api/v1/auth/forgot-password` | none |
-| POST | `/api/v1/auth/reset-password` | none |
+| POST | `/api/v1/auth/forgot-password` · `reset-password` | none |
 | GET | `/api/v1/translate/options` | none |
 | POST | `/api/v1/translate` | optional |
 | GET | `/api/v1/translate/history` | required |
 | DELETE | `/api/v1/translate/history/:id` | required |
 
-Rate limit: 10 requests per 15 min per IP on all `/api/` routes.
+## Frontend architecture
 
-## Frontend Architecture
+React Router 7 SPA. Pages: `/` (`Index.tsx` → `Translator.tsx`), `/auth`,
+`/forgot-password`, `/reset-password`, `*` (`NotFound`). `/translate` redirects to `/`.
 
-React Router 7 SPA with pages:
-- `/` (`Index.tsx`) — translator UI with optional history sidebar
-- `/auth` (`Auth.tsx`) — login / register (includes "Forgot password?" link on sign-in tab)
-- `/forgot-password` (`ForgotPassword.tsx`) — request a reset link
-- `/reset-password` (`ResetPassword.tsx`) — set new password via `?token=` query param
+- **Server state:** TanStack Query only. Auth derived from `GET /api/v1/auth/me` via
+  the `useAuth` hook (`getMe()` returns `null` on 401 — logged-out is a normal state).
+- **UI:** shadcn/ui (Radix) + Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`).
+- **Voice input:** `useSpeechRecognition` wraps the Web Speech API.
+- **API layer:** `src/api/` (`translateApi.ts`, `authApi.ts`), `fetch` with
+  `credentials: 'include'`, relative `/api/v1/` paths (proxied by Vite in dev, Nginx
+  in Docker). The `Translator` component holds the whole translator UI + history sidebar.
 
-State management: TanStack Query for all server state. Auth state is derived from `GET /api/v1/auth/me` via the `useAuth` hook. UI components are shadcn/ui (Radix-based) with Tailwind CSS v4.
+## Shared package (`packages/shared`)
 
-API calls live in `src/api/` (`translateApi.ts`, `authApi.ts`) and communicate with the backend at `/api/v1/` (proxied by Vite in dev, Nginx in Docker).
+- `constants.ts` — `TRANSLATION_MODES`, `FORMALITY_LEVELS` (+ description maps) as
+  const objects with their union types.
+- `types.ts` — `TranslatePayload`, `TranslateResponse`.
+- `auth.ts` — `RegisterPayload`, `LoginPayload`, `UserProfile`, `AuthResponse`,
+  `ForgotPasswordPayload`, `ResetPasswordPayload`, `TranslationHistoryItem`.
 
-## Shared Package (`packages/shared`)
+Both apps import from `@corpo-lingo/shared` (workspace dependency). The frontend
+aliases it straight to source; the backend consumes the built `dist/`.
 
-- `constants.ts` — `TRANSLATION_MODES` (`email | documentation | formal`) and `FORMALITY_LEVELS` (`low | medium | high`) as const objects with their string union types
-- `types.ts` — `TranslatePayload`, `TranslateResponse`, `TranslationHistoryItem`
-- `auth.ts` — `RegisterPayload`, `LoginPayload`, `AuthResponse`, `ForgotPasswordPayload`, `ResetPasswordPayload`
+## Environment variables
 
-Both apps import from `@corpo-lingo/shared` (workspace dependency).
-
-## Environment Variables
-
-Copy `apps/backend/.env.example` to `apps/backend/.env`. Key variables:
+Copy `apps/backend/.env.example` → `apps/backend/.env`. Full table in
+[docs/deployment.md](docs/deployment.md). Most-used:
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string (optional) |
-| `JWT_SECRET` | Secret for signing JWTs |
-| `AI_PROVIDER` | Primary provider: `groq` \| `openai` \| `gemini` \| `ollama` |
-| `FALLBACK_PROVIDER` | Fallback on rate-limit (optional) |
-| `GROQ_API_KEY` / `GROQ_MODEL` | Groq credentials and model |
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | OpenAI credentials and model |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | Google Gemini credentials and model |
-| `OLLAMA_HOST` / `OLLAMA_MODEL` | Ollama endpoint and model |
-| `ALLOWED_ORIGINS` | Comma-separated CORS origins |
-| `APP_URL` | Base URL used in password-reset links (default: `http://localhost:5173`) |
-| `RESEND_API_KEY` | Resend HTTP API key for password-reset emails — uses HTTPS, works on Railway |
-| `EMAIL_FROM` | From address for password-reset emails (e.g. `Corpo Lingo <noreply@yourdomain.com>`) |
+| `DATABASE_URL` | PostgreSQL connection string (**required**) |
+| `REDIS_URL` | Redis connection (optional — enables caching) |
+| `JWT_SECRET` | JWT signing secret |
+| `AI_PROVIDER` / `FALLBACK_PROVIDER` | Primary + rate-limit fallback provider |
+| `GROQ_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `OLLAMA_HOST` | Provider creds |
+| `ALLOWED_ORIGINS` | Comma-separated CORS allowlist |
+| `APP_URL` | Base URL in password-reset links |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Password-reset email delivery |
 
-## Database Schema
+## Database schema
 
-Three tables created automatically by `initDb()`:
-
-- **`users`** — id, name, email (unique), password_hash, created_at
-- **`translations`** — id (UUID), user_id (FK), input, output, mode, formality, created_at; indexed on `(user_id, created_at DESC)`
-- **`password_reset_tokens`** — id, user_id (FK), token_hash (SHA-256, unique), expires_at (1 h TTL), used_at (set on use for single-use enforcement), created_at; indexed on `token_hash`
-
-The raw token is never stored — only its SHA-256 hash. The plaintext token travels only in the reset URL.
+Three tables, created by `initDb()`: **`users`**, **`translations`** (UUID id,
+FK to users, indexed on `(user_id, created_at DESC)`; only authenticated users'
+translations are stored), **`password_reset_tokens`** (SHA-256 token hash only,
+1h TTL, single-use). Details in [docs/database.md](docs/database.md).
 
 ## Testing
 
-Tests live in `apps/backend/tests/`. The test suite mocks `ai.factory` so no real API key is needed. The mock is declared with `jest.mock('../src/services/ai.factory', ...)` at the top of each test file. Tests also do not mock the database — if you add tests that touch DB queries, you'll need to mock `pool` from `src/db/index.ts`.
+Tests live in `apps/backend/tests/` (jest + supertest). Each test file mocks the AI
+layer via `jest.mock('../src/services/ai.factory', ...)` so no real key is needed.
+The **database is not mocked** — DB-touching tests must mock `pool` from
+`src/db/index.ts`.

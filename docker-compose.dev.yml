@@ -1,0 +1,44 @@
+# Local-development infrastructure ONLY (Postgres + Redis).
+#
+# Use this when you want hot-reloading app code via `pnpm dev` but still need a
+# real database and cache. Unlike docker-compose.yml (which runs the full stack),
+# this file exposes the DB/Redis ports to your host so the locally-run backend
+# can reach them at localhost.
+#
+#   docker compose -f docker-compose.dev.yml up -d   # start db + redis
+#   pnpm dev                                          # run apps on the host
+#   docker compose -f docker-compose.dev.yml down     # stop (keep data)
+#   docker compose -f docker-compose.dev.yml down -v  # stop + wipe data
+#
+# Credentials below match the DATABASE_URL in apps/backend/.env.example:
+#   postgresql://corpo:corpo@localhost:5432/corpo_lingo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: corpo
+      POSTGRES_PASSWORD: corpo
+      POSTGRES_DB: corpo_lingo
+    ports:
+      - "5432:5432"
+    volumes:
+      - corpo-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corpo -d corpo_lingo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  corpo-dev-postgres:
