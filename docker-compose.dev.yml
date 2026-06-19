@@ -20,8 +20,6 @@ services:
       POSTGRES_USER: corpo
       POSTGRES_PASSWORD: corpo
       POSTGRES_DB: corpo_lingo
-    ports:
-      - "5432:5432"
     volumes:
       - corpo-dev-postgres:/var/lib/postgresql/data
     healthcheck:
