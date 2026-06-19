@@ -19,9 +19,14 @@ export async function initDb(): Promise<void> {
       id            SERIAL PRIMARY KEY,
       name          TEXT NOT NULL,
       email         TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
+      google_sub    TEXT UNIQUE,
       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- Migrate pre-existing databases (CREATE TABLE IF NOT EXISTS won't alter):
+    ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE;
 
     CREATE TABLE IF NOT EXISTS translations (
       id         TEXT PRIMARY KEY,

@@ -41,6 +41,14 @@ export async function logout(): Promise<void> {
   await request(`${BASE}/logout`, { method: 'POST' });
 }
 
+export async function googleLogin(credential: string): Promise<AuthResponse> {
+  return request<AuthResponse>(`${BASE}/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  });
+}
+
 export async function getMe(): Promise<UserProfile | null> {
   const res = await fetch(`${BASE}/me`, { credentials: 'include' });
   if (res.status === 401) return null;

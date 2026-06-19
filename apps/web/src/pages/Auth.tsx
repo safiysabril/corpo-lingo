@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { register, login } from "@/api/authApi";
+import { register, login, googleLogin } from "@/api/authApi";
 import { useAuth, AUTH_QUERY_KEY } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ArrowLeft, Zap } from "lucide-react";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -39,6 +42,23 @@ export default function Auth() {
     }
   };
 
+  const handleGoogle = useCallback(
+    async (credential: string) => {
+      setBusy(true);
+      try {
+        const res = await googleLogin(credential);
+        if (res.user) queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
+        toast.success("Signed in with Google.");
+        navigate("/", { replace: true });
+      } catch (err: any) {
+        toast.error(err.message || "Google sign-in failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [navigate, queryClient],
+  );
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -62,6 +82,19 @@ export default function Auth() {
               ? "Sign in to sync your translation history."
               : "Sign up to save your translation history across devices."}
           </p>
+
+          {GOOGLE_ENABLED && (
+            <>
+              <div className="mb-4 flex justify-center">
+                <GoogleSignInButton onCredential={handleGoogle} />
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleEmail} className="space-y-3">
             {mode === "signup" && (
@@ -100,9 +133,18 @@ export default function Auth() {
             </button>
           </form>
 
+          {mode === "signin" && (
+            <Link
+              to="/forgot-password"
+              className="block w-full text-center mt-4 text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              Forgot password?
+            </Link>
+          )}
+
           <button
             onClick={() => setMode((m) => (m === "signin" ? "signup" : "signin"))}
-            className="w-full mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {mode === "signin" ? "No account? Sign up" : "Already have an account? Sign in"}
           </button>

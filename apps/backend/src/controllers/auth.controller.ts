@@ -6,10 +6,13 @@ import pool from '../db';
 import type { RegisterPayload, LoginPayload, UserProfile } from '@corpo-lingo/shared';
 import type { AuthenticatedRequest } from '../middleware/authenticate';
 import { sendPasswordResetEmail } from '../services/email.service';
+import { OAuth2Client } from 'google-auth-library';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const COOKIE_NAME = 'token';
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function cookieOptions() {
   return {
@@ -24,7 +27,7 @@ interface UserRow {
   id: number;
   name: string;
   email: string;
-  password_hash: string;
+  password_hash: string | null;
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -57,13 +60,76 @@ export async function login(req: Request, res: Response): Promise<void> {
   );
   const row = result.rows[0] as UserRow | undefined;
 
-  if (!row || !(await bcrypt.compare(password, row.password_hash))) {
+  if (!row || !row.password_hash || !(await bcrypt.compare(password, row.password_hash))) {
     res.status(401).json({ success: false, error: 'Invalid email or password.' });
     return;
   }
 
   const user: UserProfile = { id: row.id, name: row.name, email: row.email };
   const token = jwt.sign({ sub: user.id, email: row.email, name: row.name }, JWT_SECRET, { expiresIn: '7d' });
+
+  res.cookie(COOKIE_NAME, token, cookieOptions()).status(200).json({ success: true, user });
+}
+
+export async function googleAuth(req: Request, res: Response): Promise<void> {
+  const { credential } = req.body as { credential?: string };
+
+  if (!credential) {
+    res.status(400).json({ success: false, error: 'Missing Google credential.' });
+    return;
+  }
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    res.status(503).json({ success: false, error: 'Google sign-in is not configured.' });
+    return;
+  }
+
+  // Verify the ID token's signature, audience, expiry, and issuer with Google.
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    res.status(401).json({ success: false, error: 'Invalid Google credential.' });
+    return;
+  }
+
+  if (!payload?.email || !payload.sub) {
+    res.status(401).json({ success: false, error: 'Google account is missing required profile fields.' });
+    return;
+  }
+  if (payload.email_verified === false) {
+    res.status(401).json({ success: false, error: 'Your Google email address is not verified.' });
+    return;
+  }
+
+  const googleSub = payload.sub;
+  const email = payload.email;
+  const name = payload.name || email.split('@')[0];
+
+  // Match by Google id, else by email (links Google to an existing password
+  // account), else create a new passwordless account.
+  let row = (await pool.query('SELECT id, name, email FROM users WHERE google_sub = $1', [googleSub]))
+    .rows[0] as { id: number; name: string; email: string } | undefined;
+
+  if (!row) {
+    const byEmail = await pool.query('SELECT id, name, email FROM users WHERE email = $1', [email]);
+    if (byEmail.rows[0]) {
+      await pool.query('UPDATE users SET google_sub = $1 WHERE id = $2', [googleSub, byEmail.rows[0].id]);
+      row = byEmail.rows[0];
+    } else {
+      const created = await pool.query(
+        'INSERT INTO users (name, email, google_sub) VALUES ($1, $2, $3) RETURNING id, name, email',
+        [name, email, googleSub],
+      );
+      row = created.rows[0];
+    }
+  }
+
+  const user: UserProfile = { id: row!.id, name: row!.name, email: row!.email };
+  const token = jwt.sign({ sub: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
 
   res.cookie(COOKIE_NAME, token, cookieOptions()).status(200).json({ success: true, user });
 }

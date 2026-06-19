@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from 'express';
 import { body, validationResult } from 'express-validator';
 import type { Request, Response, NextFunction } from 'express';
-import { register, login, logout, me, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { register, login, logout, me, forgotPassword, resetPassword, googleAuth } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/authenticate';
 
 const router: ExpressRouter = Router();
@@ -41,6 +41,7 @@ router.post(
 );
 
 router.post('/logout', logout);
+router.post('/google', googleAuth);
 router.get('/me', authenticate, me);
 
 router.post(
