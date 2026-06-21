@@ -1,0 +1,32 @@
+FROM node:22-alpine AS base
+RUN apk upgrade --no-cache && corepack enable && corepack prepare pnpm@9 --activate
+
+FROM base AS deps
+WORKDIR /app
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/web/package.json ./apps/web/
+RUN pnpm install --frozen-lockfile
+
+FROM base AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY packages/shared ./packages/shared
+COPY apps/web ./apps/web
+# VITE_* vars are inlined at build time, so they must be present before `vite build`.
+# Pass with: docker build --build-arg VITE_GOOGLE_CLIENT_ID=... (see docker-compose.yml / CI)
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+# Build shared first, then web (shared must exist before tsc/vite resolves it)
+RUN pnpm --filter @corpo-lingo/shared build
+RUN pnpm --filter @corpo-lingo/web build
+
+# Vite output is static — serve with nginx, no Node needed
+FROM nginx:alpine AS prod
+RUN apk upgrade --no-cache && apk add --no-cache gettext
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY apps/web/nginx.conf.template /etc/nginx/conf.d/nginx.conf.template
+EXPOSE 80
+CMD ["/bin/sh", "-c", "export NAMESERVER=$(awk '/^nameserver/{ns=$2; if(ns~/:/)ns=\"[\"ns\"]\"; print ns; exit}' /etc/resolv.conf) && envsubst '${BACKEND_HOST} ${NAMESERVER}' < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

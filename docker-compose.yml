@@ -46,10 +46,15 @@ services:
       retries: 3
       start_period: 15s
 
+  # The shipped frontend is apps/web (the new Lovable-based UI).
   frontend:
     build:
       context: .
-      dockerfile: apps/frontend/Dockerfile
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Public OAuth client ID, inlined into the bundle at build time.
+        # Set it in the shell or a root .env: VITE_GOOGLE_CLIENT_ID=...
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     ports:
       - "80:80"
     environment:

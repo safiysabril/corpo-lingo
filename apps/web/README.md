@@ -105,11 +105,30 @@ Query + the `useAuth` hook.
 
 ## Phase 3 — promote and retire the old app
 
-When you've verified everything:
+**Done:** `apps/web` is now the shipped frontend.
 
-1. Add a `Dockerfile` + `nginx.conf.template` (copy `apps/frontend`'s, swap the
-   `--filter` name) and a `web` service in `docker-compose.yml`.
-2. Add it to `.github/workflows/deploy.yml` if you want CI images.
-3. Delete `apps/frontend/`, and (optionally) rename this app to `@corpo-lingo/frontend`.
+- `apps/web/Dockerfile` + `apps/web/nginx.conf.template` (multi-stage build → nginx).
+- `docker-compose.yml` `frontend` service builds `apps/web` and passes
+  `VITE_GOOGLE_CLIENT_ID` as a build arg.
+- `.github/workflows/deploy.yml` builds the `corpo-lingo-frontend` image from
+  `apps/web/Dockerfile`.
 
-> Ask Claude to do Phase 2/3 — it can wire the API, Docker, and compose for you.
+`VITE_GOOGLE_CLIENT_ID` (the public OAuth client ID) is inlined at **build** time —
+the standard Vite pattern — so it must be present when the image is built:
+
+```bash
+# Local full stack — set it in your shell or a root .env first:
+VITE_GOOGLE_CLIENT_ID=<client-id> docker compose up --build
+```
+
+For CI, add a GitHub Actions **repository variable** named `VITE_GOOGLE_CLIENT_ID`
+(Settings → Secrets and variables → Actions → Variables). It's a public value (it
+ships in the browser bundle), so a variable — not a secret — is correct.
+Local `pnpm dev` reads it from `apps/web/.env`.
+
+**Remaining (do when ready):**
+
+1. Delete `apps/frontend/` (no longer built or deployed).
+2. Optionally rename this package `@corpo-lingo/web` → `@corpo-lingo/frontend`
+   (update `package.json`, `docker-compose.yml`, and `apps/web/Dockerfile` filter
+   names if you do).
