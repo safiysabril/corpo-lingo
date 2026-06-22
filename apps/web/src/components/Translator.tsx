@@ -18,6 +18,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import History, { type HistoryEntry } from "./History";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { TranslationMode, FormalityLevel, TranslationHistoryItem } from "@corpo-lingo/shared";
@@ -135,22 +136,25 @@ export default function Translator() {
                 </div>
                 <span className="text-foreground font-semibold text-lg tracking-tight">Corpo Lingo</span>
               </div>
-              {user ? (
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <Link
-                  to="/auth"
-                  className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
-                >
-                  <UserIcon className="w-3 h-3" /> Sign in
-                </Link>
-              )}
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                {user ? (
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <Link
+                    to="/auth"
+                    className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <UserIcon className="w-3 h-3" /> Sign in
+                  </Link>
+                )}
+              </div>
             </div>
             <h1 className="font-serif text-4xl lg:text-3xl text-foreground leading-tight">
               Speak <span className="italic text-primary">Corporate</span> Fluently
@@ -365,7 +369,7 @@ export default function Translator() {
         {/* Footer strip */}
         <footer className="col-span-12 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground/70 px-2 pt-2 lg:pt-0 lg:row-start-4">
           <span>Corpo Lingo</span>
-          <span>Making you sound important since 2025</span>
+          <span>Making you sound important since 2026</span>
         </footer>
       </div>
     </div>
