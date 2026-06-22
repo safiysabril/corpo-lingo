@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# @corpo-lingo/frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The Corpo Lingo web UI — a React 19 + Vite 5 single-page app. Paste casual text, pick
+a mode and formality level, and get back polished corporate language. Guests can
+translate freely; signing in (email/password or Google) adds saved history. Includes
+light/dark mode and password reset.
 
-Currently, two official plugins are available:
+For the full architecture (routes, state, theming, API layer), see
+[docs/frontend.md](../../docs/frontend.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+React 19 · Vite 5 · TypeScript · Tailwind CSS v3 · shadcn/ui (Radix) · TanStack
+Query · React Router 6 · `next-themes`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Develop
 
-## Expanding the ESLint configuration
+The backend must be running (the dev server proxies `/api/*` to `http://localhost:3000`).
+From the repo root:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+docker compose -f docker-compose.dev.yml up -d   # Postgres + Redis
+pnpm --filter @corpo-lingo/backend dev           # backend on :3000
+pnpm --filter @corpo-lingo/frontend dev          # this app on :5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Or `pnpm dev` from the root to run everything at once.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Command | Effect |
+|---------|--------|
+| `pnpm --filter @corpo-lingo/frontend dev` | Vite dev server + HMR on :5173 |
+| `pnpm --filter @corpo-lingo/frontend build` | Production build → `dist/` |
+| `pnpm --filter @corpo-lingo/frontend preview` | Serve the production build locally |
+| `pnpm --filter @corpo-lingo/frontend lint` | ESLint |
+
+## UI components (shadcn/ui)
+
+Components live in `src/components/ui/` and are managed with the shadcn CLI
+(config in `components.json`). Add more with:
+
+```bash
+pnpm dlx shadcn@latest add <component> --cwd apps/frontend
 ```
+
+## Environment
+
+One optional, **build-time**, public var enables Google sign-in:
+
+```bash
+cp .env.example .env          # then set VITE_GOOGLE_CLIENT_ID
+```
+
+`VITE_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`; leave it blank to
+hide the Google button. Because Vite inlines `VITE_*` at build time, Docker/CI pass it
+as a build arg — see
+[docs/deployment.md](../../docs/deployment.md#frontend-build-arg-vite_google_client_id).
+
+## Build wiring (don't overwrite)
+
+`vite.config.ts` carries the monorepo glue — keep the `@corpo-lingo/shared` source
+alias, the `/api` dev proxy, and the dev port. In Docker the app is built to static
+files and served by Nginx (`Dockerfile` + `nginx.conf.template`), which proxies
+`/api/*` to the backend via the `BACKEND_HOST` env var.

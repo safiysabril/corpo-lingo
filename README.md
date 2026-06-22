@@ -4,8 +4,8 @@ Turn casual text into polished corporate language. Paste what you actually mean,
 pick a **mode** (email / documentation / formal) and a **formality level**
 (low / medium / high), and an LLM rewrites it professionally — buzzword-free.
 
-Guests can translate freely; signing in adds saved history. Also includes voice
-input, dark mode, and password reset.
+Guests can translate freely; signing in adds saved history. Also includes Google
+sign-in, dark mode, and password reset.
 
 **Authors:** Zana & Safiy
 
@@ -28,11 +28,11 @@ input, dark mode, and password reset.
 | Layer | Tech |
 |-------|------|
 | Monorepo | pnpm workspaces + Nx |
-| Frontend | React 19, Vite 8, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query, React Router 7 |
+| Frontend | React 19, Vite 5, TypeScript, Tailwind CSS 3, shadcn/ui (Radix), TanStack Query, React Router 6, next-themes |
 | Backend | Node 22, Express 5, TypeScript |
 | Database | PostgreSQL 16 (users + translation history) |
 | Cache | Redis 7 (optional — caches translations, 30-day TTL) |
-| Auth | JWT in an httpOnly cookie + bcryptjs |
+| Auth | JWT in an httpOnly cookie + bcryptjs · Google sign-in (OAuth Authorization Code flow) |
 | AI | Pluggable: **Groq** (default) · OpenAI · Google Gemini · Ollama (local) |
 | Email | Resend HTTP API (prod) / Ethereal (dev) for password reset |
 | Infra | Docker multi-stage builds + Nginx + Docker Compose |
@@ -157,6 +157,11 @@ All config is in `apps/backend/.env` (see `.env.example`). The frontend needs no
 | `ALLOWED_ORIGINS` | no | Comma-separated CORS allowlist |
 | `APP_URL` | no | Base URL in password-reset links |
 | `RESEND_API_KEY` / `EMAIL_FROM` | no | Password-reset email delivery |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | no | Google sign-in (ID public; secret backend-only) |
+
+The frontend also takes one **build-time** var, `VITE_GOOGLE_CLIENT_ID` (the public
+Google client ID), passed as a Docker build arg. See
+[docs/deployment.md](docs/deployment.md#frontend-build-arg-vite_google_client_id).
 
 Full table and a production checklist: [docs/deployment.md](docs/deployment.md).
 

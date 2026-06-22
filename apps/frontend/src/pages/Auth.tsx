@@ -1,197 +1,155 @@
-import { useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowRight, Briefcase } from "lucide-react";
-import { register, login } from "@/api/authApi";
-import { AUTH_QUERY_KEY } from "@/hooks/useAuth";
+import { register, login, googleLogin } from "@/api/authApi";
+import { useAuth, AUTH_QUERY_KEY } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { ArrowLeft, Zap } from "lucide-react";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 export default function Auth() {
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
-    const [isLogin, setIsLogin] = useState(true);
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user, loading } = useAuth();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
-    const [form, setForm] = useState({ name: "", email: "", password: "" });
+  useEffect(() => {
+    if (!loading && user) navigate("/", { replace: true });
+  }, [user, loading, navigate]);
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-        setError("");
-    };
+  const handleEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const res =
+        mode === "signup"
+          ? await register({ name, email, password })
+          : await login({ email, password });
 
-    const handleSubmit = async (e: { preventDefault(): void }) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
-        try {
-            const res = isLogin
-                ? await login({ email: form.email, password: form.password })
-                : await register({ name: form.name, email: form.email, password: form.password });
+      if (res.user) queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
+      toast.success(mode === "signup" ? "Account created. You're signed in." : "Welcome back.");
+      navigate("/", { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : "Authentication failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-            queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
-            navigate("/");
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Something went wrong.");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleGoogle = useCallback(
+    async (code: string) => {
+      setBusy(true);
+      try {
+        const res = await googleLogin(code);
+        if (res.user) queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
+        toast.success("Signed in with Google.");
+        navigate("/", { replace: true });
+      } catch (err) {
+        toast.error(err instanceof Error && err.message ? err.message : "Google sign-in failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [navigate, queryClient],
+  );
 
-    const switchMode = () => {
-        setIsLogin((v) => !v);
-        setError("");
-        setForm({ name: "", email: "", password: "" });
-    };
+  return (
+    <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Link to="/" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="w-3 h-3" /> Back
+        </Link>
 
-    return (
-        <div className="min-h-screen bg-background grid lg:grid-cols-2">
-            {/* Left Side - Brand */}
-            <div className="hidden lg:flex flex-col justify-between p-12 border-r border-border bg-card/30 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-                <Link to="/" className="relative z-10 flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <Sparkles className="w-6 h-6 text-primary-foreground" />
-                    </div>
-                    <span className="text-xl font-bold tracking-tight text-foreground">Corpo Lingo</span>
-                </Link>
-                <div className="relative z-10 max-w-md">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-4 leading-tight">
-                        Transform your casual thoughts into{" "}
-                        <span className="gradient-text">corporate gold.</span>
-                    </h1>
-                    <p className="text-lg text-muted-foreground mb-8">
-                        The ultimate AI assistant for professionals. Securely save your translation
-                        history, customize your corporate tone, and never sound unprofessional again.
-                    </p>
-                    <div className="flex items-center gap-3 text-sm font-medium text-foreground bg-secondary/50 border border-border rounded-lg p-4 w-max shadow-sm">
-                        <Briefcase className="w-5 h-5 text-primary" />
-                        Trusted by professionals worldwide.
-                    </div>
-                </div>
-                <div className="relative z-10 text-sm text-muted-foreground">
-                    © 2026 Corpo Lingo. All rights reserved.
-                </div>
+        <div className="bg-card border border-border rounded-3xl p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+              <Zap className="w-5 h-5 text-primary-foreground" />
             </div>
+            <span className="font-semibold text-lg tracking-tight">Corpo Lingo</span>
+          </div>
 
-            {/* Right Side - Auth Form */}
-            <div className="flex items-center justify-center p-6 sm:p-12 relative z-10">
-                <div className="w-full max-w-[400px] flex flex-col gap-6">
-                    {/* Mobile Logo */}
-                    <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-2 justify-center">
-                        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                            <Sparkles className="w-6 h-6 text-primary-foreground" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-foreground">Corpo Lingo</span>
-                    </Link>
+          <h1 className="font-serif text-3xl text-foreground leading-tight mb-2">
+            {mode === "signin" ? "Welcome back" : "Create your account"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {mode === "signin"
+              ? "Sign in to sync your translation history."
+              : "Sign up to save your translation history across devices."}
+          </p>
 
-                    <div className="text-center lg:text-left">
-                        <h2 className="text-2xl font-bold text-foreground">
-                            {isLogin ? "Welcome back" : "Create an account"}
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1.5">
-                            {isLogin
-                                ? "Enter your details to access your account and history."
-                                : "Sign up to securely save your corporate translations."}
-                        </p>
-                    </div>
+          {GOOGLE_ENABLED && (
+            <>
+              <div className="mb-4">
+                <GoogleSignInButton onCode={handleGoogle} disabled={busy} />
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            </>
+          )}
 
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        {!isLogin && (
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                    Name
-                                </label>
-                                <input
-                                    name="name"
-                                    type="text"
-                                    required
-                                    placeholder="John Doe"
-                                    value={form.name}
-                                    onChange={handleChange}
-                                    className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                />
-                            </div>
-                        )}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                Email
-                            </label>
-                            <input
-                                name="email"
-                                type="email"
-                                required
-                                placeholder="you@company.com"
-                                value={form.email}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                    Password
-                                </label>
-                                {isLogin && (
-                                    <Link
-                                        to="/forgot-password"
-                                        className="text-xs font-medium text-primary hover:underline transition-all"
-                                    >
-                                        Forgot password?
-                                    </Link>
-                                )}
-                            </div>
-                            <input
-                                name="password"
-                                type="password"
-                                required
-                                minLength={8}
-                                placeholder="••••••••"
-                                value={form.password}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                        </div>
+          <form onSubmit={handleEmail} className="space-y-3">
+            {mode === "signup" && (
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full px-4 py-3 rounded-2xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            )}
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@work.com"
+              className="w-full px-4 py-3 rounded-2xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={mode === "signup" ? "Password (min 8 characters)" : "Password"}
+              className="w-full px-4 py-3 rounded-2xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-2xl font-medium hover:bg-primary/90 transition-all shadow-glow disabled:opacity-40"
+            >
+              {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+            </button>
+          </form>
 
-                        {error && (
-                            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
-                                {error}
-                            </p>
-                        )}
+          {mode === "signin" && (
+            <Link
+              to="/forgot-password"
+              className="block w-full text-center mt-4 text-xs text-primary hover:text-primary/80 transition-colors"
+            >
+              Forgot password?
+            </Link>
+          )}
 
-                        <Button
-                            variant="hero"
-                            type="submit"
-                            size="lg"
-                            className="w-full mt-2 font-semibold"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                                    {isLogin ? "Signing in…" : "Creating account…"}
-                                </span>
-                            ) : (
-                                <>
-                                    {isLogin ? "Sign In" : "Sign Up"}
-                                    <ArrowRight className="w-4 h-4 ml-1.5" />
-                                </>
-                            )}
-                        </Button>
-                    </form>
-
-                    <p className="text-center text-sm text-muted-foreground">
-                        {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                        <button
-                            type="button"
-                            onClick={switchMode}
-                            className="font-semibold text-primary hover:underline transition-all"
-                        >
-                            {isLogin ? "Sign up" : "Sign in"}
-                        </button>
-                    </p>
-                </div>
-            </div>
+          <button
+            onClick={() => setMode((m) => (m === "signin" ? "signup" : "signin"))}
+            className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {mode === "signin" ? "No account? Sign up" : "Already have an account? Sign in"}
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

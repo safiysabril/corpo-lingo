@@ -18,8 +18,8 @@ Reference docs for the Corpo Lingo monorepo. Start here, then jump to the area y
 A **corporate language translator**. A user pastes casual text, picks a **mode**
 (`email` / `documentation` / `formal`) and a **formality level** (`low` / `medium` /
 `high`), and an LLM rewrites it into polished professional language. It supports
-guest use, optional accounts with saved translation history, password reset, and
-voice input.
+guest use, optional accounts with saved translation history, password reset,
+Google sign-in, and dark mode.
 
 ## The one-paragraph mental model
 

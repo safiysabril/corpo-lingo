@@ -41,6 +41,14 @@ export async function logout(): Promise<void> {
   await request(`${BASE}/logout`, { method: 'POST' });
 }
 
+export async function googleLogin(code: string): Promise<AuthResponse> {
+  return request<AuthResponse>(`${BASE}/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+}
+
 export async function getMe(): Promise<UserProfile | null> {
   const res = await fetch(`${BASE}/me`, { credentials: 'include' });
   if (res.status === 401) return null;
@@ -49,7 +57,7 @@ export async function getMe(): Promise<UserProfile | null> {
     throw new Error(`Server error (${res.status}). Please try again later.`);
   }
   const data: { success: boolean; user: UserProfile } = await res.json();
-  if (!res.ok) throw new Error((data as any).error || 'Request failed');
+  if (!res.ok) throw new Error((data as { error?: string }).error || 'Request failed');
   return data.user;
 }
 

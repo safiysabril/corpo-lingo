@@ -58,8 +58,10 @@ platform (Railway, a VPS, etc.) to pull these tags.
 
 ## Environment variables
 
-Set in `apps/backend/.env` (copy from `.env.example`). The frontend needs **no** env
-vars — it talks to a relative `/api`.
+Set in `apps/backend/.env` (copy from `.env.example`). The frontend talks to a
+relative `/api`, so the only frontend var is `VITE_GOOGLE_CLIENT_ID` — a **public**
+value inlined into the bundle at build time (see "Frontend build arg" below). It is
+optional; leave it unset to disable the Google button.
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
@@ -78,9 +80,26 @@ vars — it talks to a relative `/api`.
 | `APP_URL` | no | `http://localhost:5173` | Base URL in password-reset links |
 | `RESEND_API_KEY` | no | — | Resend HTTP API key for reset emails (HTTPS, Railway-friendly) |
 | `EMAIL_FROM` | no | `Corpo Lingo <noreply@corpolingo.app>` | From address for reset emails |
+| `GOOGLE_CLIENT_ID` | no | — | Google OAuth Web client ID (public). Enables Google sign-in |
+| `GOOGLE_CLIENT_SECRET` | no | — | Google OAuth client secret — **backend only, never sent to the browser** |
 
 \* The repo's `.env.example` ships `AI_PROVIDER=groq`. The code's fallback default is
 `openai` only if the var is entirely unset.
+
+### Frontend build arg (`VITE_GOOGLE_CLIENT_ID`)
+
+`VITE_*` vars are inlined by Vite at **build time**, so the frontend image needs the
+public Google client ID passed as a Docker build arg — it is not read at runtime:
+
+- **docker-compose:** `frontend.build.args.VITE_GOOGLE_CLIENT_ID` reads
+  `${VITE_GOOGLE_CLIENT_ID}` from your shell or a root `.env`.
+- **CI** (`.github/workflows/deploy.yml`): passed from the `VITE_GOOGLE_CLIENT_ID`
+  GitHub Actions repository **variable** (not a secret — it's public).
+
+Use the same value as the backend's `GOOGLE_CLIENT_ID`. Leave it unset to ship
+without the Google button. Add your frontend origin(s) to the OAuth client's
+**Authorized JavaScript origins** in Google Cloud Console (e.g. `http://localhost`
+for the Docker frontend on port 80, `http://localhost:5173` for `pnpm dev`).
 
 ### Production checklist
 
@@ -91,6 +110,9 @@ vars — it talks to a relative `/api`.
 - [ ] A valid AI provider key + `AI_PROVIDER`.
 - [ ] `ALLOWED_ORIGINS` set to your real frontend origin(s).
 - [ ] `RESEND_API_KEY` + verified `EMAIL_FROM` domain for password reset.
+- [ ] For Google sign-in: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` on the backend,
+      `VITE_GOOGLE_CLIENT_ID` build arg on the frontend, and your prod origin added to
+      the OAuth client's Authorized JavaScript origins.
 - [ ] Terminate TLS at a reverse proxy in front of the frontend (port 80).
 
 ## Build without Docker

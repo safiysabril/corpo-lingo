@@ -106,6 +106,11 @@ TTL 30 days. Optional — skipped if `REDIS_URL` unset.
 
 **Auth:** JWT in an httpOnly cookie `token`. `authenticate` requires it;
 `optionalAuthenticate` allows guests. `AuthenticatedRequest.user = { sub, email, name }`.
+**Google sign-in** (`POST /api/v1/auth/google`): the frontend sends an authorization
+code; the controller exchanges it for tokens via `google-auth-library` using
+`GOOGLE_CLIENT_SECRET` (backend-only), verifies the ID token, upserts the user
+(`google_sub` → email → create), then issues the same cookie. `users.password_hash`
+is nullable for Google-only accounts.
 
 **Rate limit:** all `/api/` routes — **100 req/day** authenticated, **10 req/day**
 guests (`express-rate-limit`, in-memory). The guest key uses `ipKeyGenerator(req.ip)`
@@ -120,7 +125,7 @@ logged if neither.
 | Method | Path | Auth |
 |--------|------|------|
 | GET | `/health` | none |
-| POST | `/api/v1/auth/register` · `login` · `logout` | none |
+| POST | `/api/v1/auth/register` · `login` · `logout` · `google` | none |
 | GET | `/api/v1/auth/me` | required |
 | POST | `/api/v1/auth/forgot-password` · `reset-password` | none |
 | GET | `/api/v1/translate/options` | none |
@@ -130,16 +135,25 @@ logged if neither.
 
 ## Frontend architecture
 
-React Router 7 SPA. Pages: `/` (`Index.tsx` → `Translator.tsx`), `/auth`,
-`/forgot-password`, `/reset-password`, `*` (`NotFound`). `/translate` redirects to `/`.
+React Router 6 SPA (`react-router-dom`). Pages: `/` (`Index.tsx` → `Translator.tsx`),
+`/auth`, `/forgot-password`, `/reset-password`, `*` (`NotFound`).
 
 - **Server state:** TanStack Query only. Auth derived from `GET /api/v1/auth/me` via
   the `useAuth` hook (`getMe()` returns `null` on 401 — logged-out is a normal state).
-- **UI:** shadcn/ui (Radix) + Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`).
-- **Voice input:** `useSpeechRecognition` wraps the Web Speech API.
-- **API layer:** `src/api/` (`translateApi.ts`, `authApi.ts`), `fetch` with
-  `credentials: 'include'`, relative `/api/v1/` paths (proxied by Vite in dev, Nginx
-  in Docker). The `Translator` component holds the whole translator UI + history sidebar.
+- **UI:** shadcn/ui (Radix) managed via the shadcn CLI (`components.json`) +
+  Tailwind CSS v3 (`tailwind.config.ts` + `postcss.config.js`). Theme tokens are CSS
+  variables in `src/index.css` (the "Warm Sand" palette).
+- **Dark mode:** `next-themes` (`attribute="class"`, `defaultTheme="system"`);
+  `ThemeToggle` in the Translator brand tile.
+- **Google sign-in:** `GoogleSignInButton` (Google Identity Services, Authorization
+  Code popup) → `authApi.googleLogin(code)`. Gated on `VITE_GOOGLE_CLIENT_ID`.
+- **API layer:** `src/api/` (`translateApi.ts` = `translateText`; `authApi.ts` =
+  auth + history calls), `fetch` with `credentials: 'include'`, relative `/api/v1/`
+  paths (proxied by Vite in dev, Nginx in Docker). The `Translator` component holds
+  the whole translator UI + history tile.
+
+Built and served as static files by Nginx in Docker; see
+[docs/deployment.md](docs/deployment.md).
 
 ## Shared package (`packages/shared`)
 
@@ -167,6 +181,10 @@ Copy `apps/backend/.env.example` → `apps/backend/.env`. Full table in
 | `ALLOWED_ORIGINS` | Comma-separated CORS allowlist |
 | `APP_URL` | Base URL in password-reset links |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Password-reset email delivery |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google sign-in (ID is public; **secret is backend-only**) |
+
+The frontend also needs `VITE_GOOGLE_CLIENT_ID` (same public value as
+`GOOGLE_CLIENT_ID`), inlined into the bundle at build time.
 
 ## Database schema
 

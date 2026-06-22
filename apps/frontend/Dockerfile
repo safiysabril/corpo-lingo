@@ -15,6 +15,11 @@ COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_module
 COPY --from=deps /app/apps/frontend/node_modules ./apps/frontend/node_modules
 COPY packages/shared ./packages/shared
 COPY apps/frontend ./apps/frontend
+# VITE_* vars are inlined at build time, so they must be present before `vite build`.
+# Pass with: docker build --build-arg VITE_GOOGLE_CLIENT_ID=... (see docker-compose.yml / CI)
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+# Build shared first, then the frontend (shared must exist before tsc/vite resolves it)
 RUN pnpm --filter @corpo-lingo/shared build
 RUN pnpm --filter @corpo-lingo/frontend build
 
