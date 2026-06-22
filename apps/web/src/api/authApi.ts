@@ -41,11 +41,11 @@ export async function logout(): Promise<void> {
   await request(`${BASE}/logout`, { method: 'POST' });
 }
 
-export async function googleLogin(credential: string): Promise<AuthResponse> {
+export async function googleLogin(code: string): Promise<AuthResponse> {
   return request<AuthResponse>(`${BASE}/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({ code }),
   });
 }
 

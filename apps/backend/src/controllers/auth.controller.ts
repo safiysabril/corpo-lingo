@@ -12,7 +12,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const COOKIE_NAME = 'token';
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleOAuthClient = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: 'postmessage', // popup auth-code flow returns the code to the browser JS
+});
 
 function cookieOptions() {
   return {
@@ -72,27 +76,31 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 export async function googleAuth(req: Request, res: Response): Promise<void> {
-  const { credential } = req.body as { credential?: string };
+  const { code } = req.body as { code?: string };
 
-  if (!credential) {
-    res.status(400).json({ success: false, error: 'Missing Google credential.' });
+  if (!code) {
+    res.status(400).json({ success: false, error: 'Missing Google authorization code.' });
     return;
   }
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     res.status(503).json({ success: false, error: 'Google sign-in is not configured.' });
     return;
   }
 
-  // Verify the ID token's signature, audience, expiry, and issuer with Google.
+  // Exchange the authorization code for tokens server-side. This call uses the
+  // client secret, which never leaves the backend. Then verify the returned ID
+  // token (signature, audience, expiry, issuer) to read the user's profile.
   let payload;
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
+    const { tokens } = await googleOAuthClient.getToken({ code, redirect_uri: 'postmessage' });
+    if (!tokens.id_token) throw new Error('No ID token in Google token response.');
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken: tokens.id_token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     payload = ticket.getPayload();
   } catch {
-    res.status(401).json({ success: false, error: 'Invalid Google credential.' });
+    res.status(401).json({ success: false, error: 'Google sign-in failed.' });
     return;
   }
 

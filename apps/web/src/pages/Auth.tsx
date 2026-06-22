@@ -43,10 +43,10 @@ export default function Auth() {
   };
 
   const handleGoogle = useCallback(
-    async (credential: string) => {
+    async (code: string) => {
       setBusy(true);
       try {
-        const res = await googleLogin(credential);
+        const res = await googleLogin(code);
         if (res.user) queryClient.setQueryData(AUTH_QUERY_KEY, res.user);
         toast.success("Signed in with Google.");
         navigate("/", { replace: true });
@@ -85,8 +85,8 @@ export default function Auth() {
 
           {GOOGLE_ENABLED && (
             <>
-              <div className="mb-4 flex justify-center">
-                <GoogleSignInButton onCredential={handleGoogle} />
+              <div className="mb-4">
+                <GoogleSignInButton onCode={handleGoogle} disabled={busy} />
               </div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px bg-border" />
