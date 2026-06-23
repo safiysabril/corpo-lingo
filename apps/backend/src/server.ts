@@ -2,6 +2,16 @@ import 'dotenv/config';
 import app from './app';
 import { initDb } from './db';
 
+// In production a real JWT secret is mandatory — never fall back to the dev default,
+// which would let anyone forge session tokens. Fail fast at startup instead.
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'dev-secret-change-in-production')
+) {
+  console.error('FATAL: JWT_SECRET must be set to a strong, unique value in production.');
+  process.exit(1);
+}
+
 const PORT = process.env.PORT || 3000;
 
 async function start() {

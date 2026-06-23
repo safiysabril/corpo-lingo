@@ -11,7 +11,7 @@ export function optionalAuthenticate(req: Request, _res: Response, next: NextFun
   const token = (req as Request & { cookies: Record<string, string> }).cookies?.token;
   if (token) {
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as unknown as { sub: number; email: string; name: string };
+      const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as unknown as { sub: number; email: string; name: string };
       (req as AuthenticatedRequest).user = payload;
     } catch {
       // ignore invalid token — user proceeds as guest
@@ -27,7 +27,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     return;
   }
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as unknown as { sub: number; email: string; name: string };
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as unknown as { sub: number; email: string; name: string };
     (req as AuthenticatedRequest).user = payload;
     next();
   } catch {

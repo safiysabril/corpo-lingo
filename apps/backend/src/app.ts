@@ -32,7 +32,7 @@ function getAuthUserId(req: Request): number | null {
   const token = (req as any).cookies?.token;
   if (!token) return null;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-production') as unknown as { sub: number };
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-production', { algorithms: ['HS256'] }) as unknown as { sub: number };
     return payload.sub ?? null;
   } catch {
     return null;

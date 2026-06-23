@@ -50,7 +50,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   );
 
   const user: UserProfile = { id: result.rows[0].id, name, email };
-  const token = jwt.sign({ sub: user.id, email, name }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ sub: user.id, email, name }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 
   res.cookie(COOKIE_NAME, token, cookieOptions()).status(201).json({ success: true, user });
 }
@@ -70,7 +70,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 
   const user: UserProfile = { id: row.id, name: row.name, email: row.email };
-  const token = jwt.sign({ sub: user.id, email: row.email, name: row.name }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ sub: user.id, email: row.email, name: row.name }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 
   res.cookie(COOKIE_NAME, token, cookieOptions()).status(200).json({ success: true, user });
 }
@@ -137,7 +137,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
   }
 
   const user: UserProfile = { id: row!.id, name: row!.name, email: row!.email };
-  const token = jwt.sign({ sub: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ sub: user.id, email: user.email, name: user.name }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 
   res.cookie(COOKIE_NAME, token, cookieOptions()).status(200).json({ success: true, user });
 }

@@ -45,9 +45,12 @@ export default function errorHandler(
     return;
   }
 
-  res.status(toStatus(err)).json({
+  const status = toStatus(err);
+  // Don't leak internal error details on an unexpected 5xx in production.
+  const clientError = status >= 500 && !isDev ? 'An unexpected error occurred.' : message;
+  res.status(status).json({
     success: false,
-    error: message,
+    error: clientError,
     detail: isDev ? toStack(err) : undefined,
   });
 }

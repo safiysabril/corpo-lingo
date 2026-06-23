@@ -13,6 +13,15 @@ import nodemailer from 'nodemailer';
  * 3. Production with no config → skip and log a warning.
  */
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function sendViaResend(
   to: string,
   from: string,
@@ -67,8 +76,9 @@ export async function sendPasswordResetEmail(
     '— Corpo Lingo',
   ].join('\n');
 
+  const safeName = escapeHtml(name);
   const html = `
-    <p>Hi ${name},</p>
+    <p>Hi ${safeName},</p>
     <p>You requested a password reset. Click the button below to choose a new password.
        The link expires in <strong>1 hour</strong>.</p>
     <p style="margin:24px 0">

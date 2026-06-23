@@ -1,16 +1,23 @@
 import request from 'supertest';
 import app from '../src/app';
 
-// Mock the factory so tests never touch a real AI API
-jest.mock('../src/services/ai.factory', () => ({
-  getTranslationService: () => ({
-    translateText: jest.fn().mockResolvedValue({
-      translatedText: 'We would like to leverage this opportunity to synergize our efforts.',
-      usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 },
-      model: 'llama-3.3-70b-versatile',
+// Mock the factory so tests never touch a real AI API. The controller calls
+// translateWithFallback(); getTranslationService is kept for completeness.
+// (The object is defined inside the factory because jest hoists jest.mock above
+// the imports, so it can't reference out-of-scope variables.)
+jest.mock('../src/services/ai.factory', () => {
+  const result = {
+    translatedText: 'We would like to leverage this opportunity to synergize our efforts.',
+    usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 },
+    model: 'llama-3.3-70b-versatile',
+  };
+  return {
+    getTranslationService: () => ({
+      translateText: jest.fn().mockResolvedValue(result),
     }),
-  }),
-}));
+    translateWithFallback: jest.fn().mockResolvedValue(result),
+  };
+});
 
 describe('GET /health', () => {
   it('returns 200 and status message', async () => {
