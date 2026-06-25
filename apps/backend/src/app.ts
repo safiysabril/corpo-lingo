@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from './config/jwtSecret';
 
 import translateRoutes from './routes/translate.routes';
 import authRoutes from './routes/auth.routes';
@@ -32,7 +33,7 @@ function getAuthUserId(req: Request): number | null {
   const token = (req as any).cookies?.token;
   if (!token) return null;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-in-production', { algorithms: ['HS256'] }) as unknown as { sub: number };
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as unknown as { sub: number };
     return payload.sub ?? null;
   } catch {
     return null;

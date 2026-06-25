@@ -7,8 +7,8 @@ import type { RegisterPayload, LoginPayload, UserProfile } from '@corpo-lingo/sh
 import type { AuthenticatedRequest } from '../middleware/authenticate';
 import { sendPasswordResetEmail } from '../services/email.service';
 import { OAuth2Client } from 'google-auth-library';
+import { JWT_SECRET } from '../config/jwtSecret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const COOKIE_NAME = 'token';
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 

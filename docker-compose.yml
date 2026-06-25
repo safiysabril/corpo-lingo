@@ -22,6 +22,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # NOTE: this compose runs the full stack in DEVELOPMENT mode. NODE_ENV defaults
+  # to development, so cookies are NOT Secure, the JWT startup guard is off, and DB
+  # SSL is disabled — appropriate for local testing over http://localhost, not for
+  # production. Do NOT just set NODE_ENV=production here: that turns on Secure
+  # cookies (which a browser won't send over plain HTTP) and DB SSL (the local
+  # postgres has no TLS). A real deployment needs HTTPS + an SSL-capable Postgres.
+  # See docs/deployment.md.
   backend:
     build:
       context: .
@@ -29,6 +36,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      NODE_ENV: ${NODE_ENV:-development}   # overridable: `NODE_ENV=production docker compose up` (see note above)
       DATABASE_URL: postgresql://corpo:corpo@postgres:5432/corpo_lingo
       REDIS_URL: redis://redis:6379
     env_file:

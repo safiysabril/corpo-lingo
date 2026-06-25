@@ -4,7 +4,7 @@
 
 | File | Purpose |
 |------|---------|
-| [`docker-compose.yml`](../docker-compose.yml) | **Full stack** — postgres + redis + backend + frontend. Production-like. |
+| [`docker-compose.yml`](../docker-compose.yml) | **Full stack** — postgres + redis + backend + frontend. Runs in **development mode** for local testing (see the `NODE_ENV` note below), not as-is in production. |
 | [`docker-compose.dev.yml`](../docker-compose.dev.yml) | **Infra only** — postgres + redis with host ports, for `pnpm dev`. See [local-development.md](local-development.md). |
 
 ## Full stack with Docker
@@ -29,6 +29,13 @@ Key wiring:
 - The backend service uses `env_file: apps/backend/.env` **and** overrides
   `DATABASE_URL`/`REDIS_URL` via `environment:` to point at the `postgres`/`redis`
   service names. So your local `.env` DB settings don't affect the Dockerized run.
+- **`NODE_ENV` defaults to `development`** here (`NODE_ENV: ${NODE_ENV:-development}`,
+  also the value in `.env`). That means **no `Secure` cookies, the JWT startup guard
+  off, and DB SSL disabled** — correct for local `http://localhost`, but *not*
+  production. Don't just flip it to `production` in this compose: `Secure` cookies
+  aren't sent over plain HTTP (login breaks) and the backend would attempt SSL against
+  the non-TLS local postgres (connection fails). A real deployment runs with
+  `NODE_ENV=production` behind HTTPS and an SSL-capable managed Postgres.
 - The frontend container reads `BACKEND_HOST=backend:3000` and templates it into
   `nginx.conf` at startup (`envsubst`), so Nginx proxies `/api/*` to the backend.
 
