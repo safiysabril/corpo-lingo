@@ -1,10 +1,17 @@
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000,
-});
+// Exported so the SSL gating can be unit-tested without opening a connection.
+// In production we connect over SSL (rejectUnauthorized:false suits managed
+// Postgres with self-signed certs); locally SSL is off.
+export function poolConfig(): PoolConfig {
+  return {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+  };
+}
+
+const pool = new Pool(poolConfig());
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
